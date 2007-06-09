@@ -27,6 +27,11 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#if defined (WIN32)
+#include <windows.h>
+#include <winbase.h>
+#endif
+
 #if (C_HAVE_MPROTECT)
 #include <sys/mman.h>
 
