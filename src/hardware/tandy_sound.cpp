@@ -268,10 +268,6 @@ static void TandySN76496Update(Bitu length) {
 	tandy.chan->AddSamples_m16(length,(Bit16s *)MixTemp);
 }
 
-static void TandyDACWrite(Bitu port,Bitu data,Bitu iolen) {
-	LOG_MSG("Write tandy dac %X val %X",port,data);
-}
-
 static void SN76496_set_clock(struct SN76496 *R, int clock) {
 	/* the base clock for the tone generators is the chip clock divided by 16; */
 	/* for the noise generator, it is clock / 256. */
@@ -388,6 +384,66 @@ static void TandyDACDMAEnabled(void) {
 static void TandyDACDMADisabled(void) {
 }
 
+static void TandyDACWrite(Bitu port,Bitu data,Bitu /*iolen*/) {
+	switch (port) {
+	case 0xc4: {
+		Bitu oldmode = tandy.dac.mode;
+		tandy.dac.mode = (Bit8u)(data&0xff);
+		if ((data&3)!=(oldmode&3)) {
+			TandyDACModeChanged();
+		}
+		if (((data&0x0c)==0x0c) && ((oldmode&0x0c)!=0x0c)) {
+			TandyDACDMAEnabled();
+		} else if (((data&0x0c)!=0x0c) && ((oldmode&0x0c)==0x0c)) {
+			TandyDACDMADisabled();
+		}
+		}
+		break;
+	case 0xc5:
+		switch (tandy.dac.mode&3) {
+		case 0:
+			// joystick mode
+			break;
+		case 1:
+			tandy.dac.control = (Bit8u)(data&0xff);
+			break;
+		case 2:
+			break;
+		case 3:
+			// direct output
+			break;
+		}
+		break;
+	case 0xc6:
+		tandy.dac.frequency = tandy.dac.frequency & 0xf00 | (Bit8u)(data&0xff);
+		switch (tandy.dac.mode&3) {
+		case 0:
+			// joystick mode
+			break;
+		case 1:
+		case 2:
+		case 3:
+			TandyDACModeChanged();
+			break;
+		}
+		break;
+	case 0xc7:
+		tandy.dac.frequency = tandy.dac.frequency & 0x00ff | (((Bit8u)(data&0xf))<<8);
+		tandy.dac.amplitude = (Bit8u)(data>>5);
+		switch (tandy.dac.mode&3) {
+		case 0:
+			// joystick mode
+			break;
+		case 1:
+		case 2:
+		case 3:
+			TandyDACModeChanged();
+			break;
+		}
+		break;
+	}
+}
+
 static Bitu TandyDACRead(Bitu port,Bitu /*iolen*/) {
 	switch (port) {
 	case 0xc4:
@@ -501,6 +557,18 @@ public:
 
 		tandy.enabled=false;
 		real_writeb(0x40,0xd4,0xff);	/* BIOS Tandy DAC initialization value */
+
+		Bitu i;
+		struct SN76496 *R = &sn;
+		R->SampleRate = sample_rate;
+		SN76496_set_clock(R, 3579545);
+		for (i = 0;i < 4;i++) R->Volume[i] = 0;
+		R->LastRegister = 0;
+		for (i = 0;i < 8;i+=2)
+		{
+			R->Register[i] = 0;
+			R->Register[i + 1] = 0x0f;	/* volume = 0 */
+		}
 
 		SN76496Reset( &sn, 3579545, sample_rate );
 	}
