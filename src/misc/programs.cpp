@@ -783,6 +783,7 @@ void CONFIG::Run(void) {
 					// it's a property name
 					std::string val = sec->GetPropValue(pvars[0].c_str());
 					WriteOut("%s",val.c_str());
+					first_shell->SetEnv("CONFIG",val.c_str());
 				}
 				break;
 			}
@@ -800,6 +801,7 @@ void CONFIG::Run(void) {
 					return;
 				}
 				WriteOut("%s",val.c_str());
+				first_shell->SetEnv("CONFIG",val.c_str());
 				break;
 			}
 			default:
