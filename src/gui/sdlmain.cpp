@@ -302,6 +302,18 @@ static void DOSBox_SetOriginalIcon(void) {
     	SDL_WM_SetIcon(logos,NULL);
 #endif
 }
+void GFX_SetTitle(Bit32s cycles,Bits frameskip,bool paused){
+	char title[200]={0};
+	static Bit32s internal_cycles=0;
+	static Bit32s internal_frameskip=0;
+	if(cycles != -1) internal_cycles = cycles;
+	if(frameskip != -1) internal_frameskip = frameskip;
+	if(CPU_CycleAutoAdjust) {
+		sprintf(title,"DOSBox %s, CPU speed: max %3d%% cycles, Frameskip %2d, Program: %8s",VERSION,internal_cycles,internal_frameskip,RunningProgram);
+	} else {
+		sprintf(title,"DOSBox %s, CPU speed: %8d cycles, Frameskip %2d, Program: %8s",VERSION,internal_cycles,internal_frameskip,RunningProgram);
+	}
+}
 /* =================================================================================== */
 
 #if defined (WIN32)
@@ -693,7 +705,7 @@ Bitu GFX_SetSize(Bitu width,Bitu height,Bitu flags,double scalex,double scaley,G
 	sdl.draw.scalex=scalex;
 	sdl.draw.scaley=scaley;
 
-	Bitu bpp=0;
+	int bpp=0;
 	Bitu retFlags = 0;
 
 	if (sdl.blit.surface) {
@@ -785,7 +797,11 @@ dosurface:
 					sdl.desktop.full.height, bpp, wflags);
 			} else {
 				sdl.clip.x=0;sdl.clip.y=0;
-				sdl.surface=SDL_SetVideoMode(width, height, bpp, wflags);
+				sdl.surface=SDL_SetVideoMode(width,height,bpp,
+					SDL_FULLSCREEN | ((flags & GFX_CAN_RANDOM) ? SDL_SWSURFACE : SDL_HWSURFACE) |
+					(sdl.desktop.doublebuf ? SDL_DOUBLEBUF|SDL_ASYNCBLIT  : 0)|SDL_HWPALETTE);
+				if (sdl.surface == NULL)
+					E_Exit("Could not set fullscreen video mode %ix%i-%i: %s",(int)width,(int)height,bpp,SDL_GetError());
 			}
 			if (sdl.surface == NULL) {
 				LOG_MSG("Fullscreen not supported: %s", SDL_GetError());
@@ -815,7 +831,7 @@ dosurface:
 			}
 #endif
 			if (sdl.surface == NULL)
-				E_Exit("Could not set windowed video mode %ix%i-%i: %s",width,height,bpp,SDL_GetError());
+				E_Exit("Could not set windowed video mode %ix%i-%i: %s",(int)width,(int)height,bpp,SDL_GetError());
 		}
 		if (sdl.surface) {
 			switch (sdl.surface->format->BitsPerPixel) {
