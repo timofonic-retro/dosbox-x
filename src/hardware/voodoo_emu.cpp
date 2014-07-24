@@ -100,6 +100,7 @@ static UINT8 dither2_lookup[256*16*2];
 /* fast reciprocal+log2 lookup */
 UINT32 voodoo_reciplog[(2 << RECIPLOG_LOOKUP_BITS) + 2];
 
+UINT32 view_width = 640;
 
 
 /*************************************
@@ -1706,6 +1707,8 @@ void register_w(UINT32 offset, UINT32 data) {
 					int htotal = ((v->reg[hSync].u >> 16) & 0x3ff) + 1 + (v->reg[hSync].u & 0xff) + 1;
 					int vtotal = ((v->reg[vSync].u >> 16) & 0xfff) + (v->reg[vSync].u & 0xfff);
 					int hvis = v->reg[videoDimensions].u & 0x3ff;
+					int hvis_fake = hvis;
+					hvis*=1.5;
 					int vvis = (v->reg[videoDimensions].u >> 16) & 0x3ff;
 					int hbp = (v->reg[backPorch].u & 0xff) + 2;
 					int vbp = (v->reg[backPorch].u >> 16) & 0xff;
@@ -1761,9 +1764,10 @@ void register_w(UINT32 offset, UINT32 data) {
 
 					/* configure the new framebuffer info */
 					UINT32 new_width = (hvis+1) & ~1;
+					view_width = (hvis_fake+1) & ~1;
 					UINT32 new_height = (vvis+1) & ~1;
 					if ((v->fbi.width != new_width) || (v->fbi.height != new_height)) {
-						v->fbi.width = new_width;
+						v->fbi.width = new_width*1.5;
 						v->fbi.height = new_height;
 						v->ogl_dimchange = true;
 					}
@@ -1938,11 +1942,13 @@ void register_w(UINT32 offset, UINT32 data) {
 		case clipLowYHighY:
 		case clipLeftRight:
 			if (chips & 1) v->reg[0x000 + regnum].u = data;
+#if 0
 			if (v->ogl) {
 				CPU_Core_Dyn_X86_SaveDHFPUState();
 				voodoo_ogl_clip_window(v);
 				CPU_Core_Dyn_X86_RestoreDHFPUState();
 			}
+#endif
 			break;
 
 		/* these registers are referenced in the renderer; we must wait for pending work before changing */

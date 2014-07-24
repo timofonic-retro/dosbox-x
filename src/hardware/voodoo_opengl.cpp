@@ -63,6 +63,7 @@ static UINT32 ogl_texture_index = 1;
 /* texture cache buffer */
 UINT32 texrgb[256*256];
 
+extern UINT32 view_width;
 
 /* texture address map */
 std::map <const UINT32, ogl_texmap> textures[2];
@@ -1643,7 +1644,7 @@ void voodoo_ogl_reset_videomode(void) {
 	if (GFX_IsFullscreen()) {
 		sdl_flags |= SDL_FULLSCREEN;
 	} else {
-		ogl_surface = SDL_SetVideoMode(v->fbi.width, v->fbi.height, 32, sdl_flags);
+		ogl_surface = SDL_SetVideoMode(view_width, v->fbi.height, 32, sdl_flags);
 	}
 
 	if ((ogl_surface != NULL) && (sdl_flags & SDL_FULLSCREEN)) SDL_Delay(500);
@@ -1652,18 +1653,18 @@ void voodoo_ogl_reset_videomode(void) {
 		if (full_sdl_restart) {
 			SDL_QuitSubSystem(SDL_INIT_VIDEO);
 			SDL_InitSubSystem(SDL_INIT_VIDEO);
-			ogl_surface = SDL_SetVideoMode(v->fbi.width, v->fbi.height, 32, sdl_flags);
+			ogl_surface = SDL_SetVideoMode(view_width, v->fbi.height, 32, sdl_flags);
 		}
 		if (ogl_surface == NULL) {
 			has_alpha = false;
 			SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
-			if (SDL_SetVideoMode(v->fbi.width, v->fbi.height, 32, sdl_flags) == 0) {
+			if (SDL_SetVideoMode(view_width, v->fbi.height, 32, sdl_flags) == 0) {
 				has_stencil = false;
 				SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
-				if (SDL_SetVideoMode(v->fbi.width, v->fbi.height, 32, sdl_flags) == 0) {
+				if (SDL_SetVideoMode(view_width, v->fbi.height, 32, sdl_flags) == 0) {
 					if (sdl_flags & SDL_FULLSCREEN) {
 						sdl_flags &= ~(SDL_FULLSCREEN);
-						if (SDL_SetVideoMode(v->fbi.width, v->fbi.height, 32, sdl_flags) == 0) {
+						if (SDL_SetVideoMode(view_width, v->fbi.height, 32, sdl_flags) == 0) {
 							E_Exit("VOODOO: opengl init error");
 						}
 					} else {
