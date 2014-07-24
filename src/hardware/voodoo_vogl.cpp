@@ -30,30 +30,30 @@
 
 #include "voodoo_vogl.h"
 
-PFNGLACTIVETEXTUREARBPROC glActiveTextureARB = NULL;
-PFNGLMULTITEXCOORD4FARBPROC glMultiTexCoord4fARB = NULL;
-PFNGLMULTITEXCOORD4FVARBPROC glMultiTexCoord4fvARB = NULL;
-PFNGLCREATESHADEROBJECTARBPROC glCreateShaderObjectARB = NULL;
-PFNGLSHADERSOURCEARBPROC glShaderSourceARB = NULL;
-PFNGLCOMPILESHADERARBPROC glCompileShaderARB = NULL;
-PFNGLCREATEPROGRAMOBJECTARBPROC glCreateProgramObjectARB = NULL;
-PFNGLATTACHOBJECTARBPROC glAttachObjectARB = NULL;
-PFNGLLINKPROGRAMARBPROC glLinkProgramARB = NULL;
-PFNGLUSEPROGRAMOBJECTARBPROC glUseProgramObjectARB = NULL;
-PFNGLUNIFORM1IARBPROC glUniform1iARB = NULL;
-PFNGLUNIFORM1FARBPROC glUniform1fARB = NULL;
-PFNGLUNIFORM2FARBPROC glUniform2fARB = NULL;
-PFNGLUNIFORM3FARBPROC glUniform3fARB = NULL;
-PFNGLUNIFORM4FARBPROC glUniform4fARB = NULL;
-PFNGLGETUNIFORMLOCATIONARBPROC glGetUniformLocationARB = NULL;
-PFNGLDETACHOBJECTARBPROC glDetachObjectARB = NULL;
-PFNGLDELETEOBJECTARBPROC glDeleteObjectARB = NULL;
-PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameterivARB = NULL;
-PFNGLGETINFOLOGARBPROC glGetInfoLogARB = NULL;
-PFNGLBLENDFUNCSEPARATEEXTPROC glBlendFuncSeparateEXT = NULL;
-PFNGLGENERATEMIPMAPEXTPROC glGenerateMipmapEXT = NULL;
-PFNGLGETATTRIBLOCATIONARBPROC glGetAttribLocationARB = NULL;
-PFNGLVERTEXATTRIB1FARBPROC glVertexAttrib1fARB = NULL;
+PFNGLACTIVETEXTUREARBPROC vglActiveTextureARB = NULL;
+PFNGLMULTITEXCOORD4FARBPROC vglMultiTexCoord4fARB = NULL;
+PFNGLMULTITEXCOORD4FVARBPROC vglMultiTexCoord4fvARB = NULL;
+PFNGLCREATESHADEROBJECTARBPROC vglCreateShaderObjectARB = NULL;
+PFNGLSHADERSOURCEARBPROC vglShaderSourceARB = NULL;
+PFNGLCOMPILESHADERARBPROC vglCompileShaderARB = NULL;
+PFNGLCREATEPROGRAMOBJECTARBPROC vglCreateProgramObjectARB = NULL;
+PFNGLATTACHOBJECTARBPROC vglAttachObjectARB = NULL;
+PFNGLLINKPROGRAMARBPROC vglLinkProgramARB = NULL;
+PFNGLUSEPROGRAMOBJECTARBPROC vglUseProgramObjectARB = NULL;
+PFNGLUNIFORM1IARBPROC vglUniform1iARB = NULL;
+PFNGLUNIFORM1FARBPROC vglUniform1fARB = NULL;
+PFNGLUNIFORM2FARBPROC vglUniform2fARB = NULL;
+PFNGLUNIFORM3FARBPROC vglUniform3fARB = NULL;
+PFNGLUNIFORM4FARBPROC vglUniform4fARB = NULL;
+PFNGLGETUNIFORMLOCATIONARBPROC vglGetUniformLocationARB = NULL;
+PFNGLDETACHOBJECTARBPROC vglDetachObjectARB = NULL;
+PFNGLDELETEOBJECTARBPROC vglDeleteObjectARB = NULL;
+PFNGLGETOBJECTPARAMETERIVARBPROC vglGetObjectParameterivARB = NULL;
+PFNGLGETINFOLOGARBPROC vglGetInfoLogARB = NULL;
+PFNGLBLENDFUNCSEPARATEEXTPROC vglBlendFuncSeparateEXT = NULL;
+PFNGLGENERATEMIPMAPEXTPROC vglGenerateMipmapEXT = NULL;
+PFNGLGETATTRIBLOCATIONARBPROC vglGetAttribLocationARB = NULL;
+PFNGLVERTEXATTRIB1FARBPROC vglVertexAttrib1fARB = NULL;
 
 
 static Bit32s opengl_version = -1;
@@ -143,22 +143,22 @@ void VOGL_InitVersion(void) {
 }
 
 void VOGL_ClearShaderFunctions(void) {
-	glShaderSourceARB = NULL;
-	glCompileShaderARB = NULL;
-	glCreateProgramObjectARB = NULL;
-	glAttachObjectARB = NULL;
-	glLinkProgramARB = NULL;
-	glUseProgramObjectARB = NULL;
-	glUniform1iARB = NULL;
-	glUniform1fARB = NULL;
-	glUniform2fARB = NULL;
-	glUniform3fARB = NULL;
-	glUniform4fARB = NULL;
-	glGetUniformLocationARB = NULL;
-	glDetachObjectARB = NULL;
-	glDeleteObjectARB  = NULL;
-	glGetObjectParameterivARB = NULL;
-	glGetInfoLogARB = NULL;
+	vglShaderSourceARB = NULL;
+	vglCompileShaderARB = NULL;
+	vglCreateProgramObjectARB = NULL;
+	vglAttachObjectARB = NULL;
+	vglLinkProgramARB = NULL;
+	vglUseProgramObjectARB = NULL;
+	vglUniform1iARB = NULL;
+	vglUniform1fARB = NULL;
+	vglUniform2fARB = NULL;
+	vglUniform3fARB = NULL;
+	vglUniform4fARB = NULL;
+	vglGetUniformLocationARB = NULL;
+	vglDetachObjectARB = NULL;
+	vglDeleteObjectARB  = NULL;
+	vglGetObjectParameterivARB = NULL;
+	vglGetInfoLogARB = NULL;
 }
 
 bool VOGL_Initialize(void) {
@@ -166,32 +166,32 @@ bool VOGL_Initialize(void) {
 	
 	VOGL_InitVersion();
 
-	glActiveTextureARB = (PFNGLACTIVETEXTUREARBPROC)SDL_GL_GetProcAddress("glActiveTextureARB");
-	if (!glActiveTextureARB) {
+	vglActiveTextureARB = (PFNGLACTIVETEXTUREARBPROC)SDL_GL_GetProcAddress("glActiveTextureARB");
+	if (!vglActiveTextureARB) {
 		LOG_MSG("opengl: glActiveTextureARB extension not supported");
 		return false;
 	}
 
-	glMultiTexCoord4fARB = (PFNGLMULTITEXCOORD4FARBPROC)SDL_GL_GetProcAddress("glMultiTexCoord4fARB");
-	if (!glMultiTexCoord4fARB) {
+	vglMultiTexCoord4fARB = (PFNGLMULTITEXCOORD4FARBPROC)SDL_GL_GetProcAddress("glMultiTexCoord4fARB");
+	if (!vglMultiTexCoord4fARB) {
 		LOG_MSG("opengl: glMultiTexCoord4fARB extension not supported");
 		return false;
 	}
 
-	glMultiTexCoord4fvARB = (PFNGLMULTITEXCOORD4FVARBPROC)SDL_GL_GetProcAddress("glMultiTexCoord4fvARB");
-	if (!glMultiTexCoord4fvARB) {
+	vglMultiTexCoord4fvARB = (PFNGLMULTITEXCOORD4FVARBPROC)SDL_GL_GetProcAddress("glMultiTexCoord4fvARB");
+	if (!vglMultiTexCoord4fvARB) {
 		LOG_MSG("opengl: glMultiTexCoord4fvARB extension not supported");
 		return false;
 	}
 
-	glBlendFuncSeparateEXT = (PFNGLBLENDFUNCSEPARATEEXTPROC)SDL_GL_GetProcAddress("glBlendFuncSeparateEXT");
-	if (!glBlendFuncSeparateEXT) {
+	vglBlendFuncSeparateEXT = (PFNGLBLENDFUNCSEPARATEEXTPROC)SDL_GL_GetProcAddress("glBlendFuncSeparateEXT");
+	if (!vglBlendFuncSeparateEXT) {
 		LOG_MSG("opengl: glBlendFuncSeparateEXT extension not supported");
 		return false;
 	}
 
-	glGenerateMipmapEXT = (PFNGLGENERATEMIPMAPEXTPROC)SDL_GL_GetProcAddress("glGenerateMipmapEXT");
-	if (!glGenerateMipmapEXT) {
+	vglGenerateMipmapEXT = (PFNGLGENERATEMIPMAPEXTPROC)SDL_GL_GetProcAddress("glGenerateMipmapEXT");
+	if (!vglGenerateMipmapEXT) {
 		LOG_MSG("opengl: glGenerateMipmapEXT extension not supported");
 		return false;
 	}
@@ -201,69 +201,69 @@ bool VOGL_Initialize(void) {
 		if (strstr(extensions, "GL_ARB_shader_objects") && strstr(extensions, "GL_ARB_vertex_shader") &&
 			strstr(extensions, "GL_ARB_fragment_shader")) {
 
-			glCreateShaderObjectARB = (PFNGLCREATESHADEROBJECTARBPROC)SDL_GL_GetProcAddress("glCreateShaderObjectARB");
-			if (!glCreateShaderObjectARB) {
+			vglCreateShaderObjectARB = (PFNGLCREATESHADEROBJECTARBPROC)SDL_GL_GetProcAddress("glCreateShaderObjectARB");
+			if (!vglCreateShaderObjectARB) {
 				LOG_MSG("opengl: shader extensions not supported. Using fixed pipeline");
 			} else {
-				glShaderSourceARB = (PFNGLSHADERSOURCEARBPROC)SDL_GL_GetProcAddress("glShaderSourceARB");
-				if (!glShaderSourceARB) LOG_MSG("opengl: glShaderSourceARB extension not supported");
+				vglShaderSourceARB = (PFNGLSHADERSOURCEARBPROC)SDL_GL_GetProcAddress("glShaderSourceARB");
+				if (!vglShaderSourceARB) LOG_MSG("opengl: glShaderSourceARB extension not supported");
 
-				glCompileShaderARB = (PFNGLCOMPILESHADERARBPROC)SDL_GL_GetProcAddress("glCompileShaderARB");
-				if (!glCompileShaderARB) LOG_MSG("opengl: glCompileShaderARB extension not supported");
+				vglCompileShaderARB = (PFNGLCOMPILESHADERARBPROC)SDL_GL_GetProcAddress("glCompileShaderARB");
+				if (!vglCompileShaderARB) LOG_MSG("opengl: glCompileShaderARB extension not supported");
 
-				glCreateProgramObjectARB = (PFNGLCREATEPROGRAMOBJECTARBPROC)SDL_GL_GetProcAddress("glCreateProgramObjectARB");
-				if (!glCreateProgramObjectARB) LOG_MSG("opengl: glCreateProgramObjectARB extension not supported");
+				vglCreateProgramObjectARB = (PFNGLCREATEPROGRAMOBJECTARBPROC)SDL_GL_GetProcAddress("glCreateProgramObjectARB");
+				if (!vglCreateProgramObjectARB) LOG_MSG("opengl: glCreateProgramObjectARB extension not supported");
 
-				glAttachObjectARB = (PFNGLATTACHOBJECTARBPROC)SDL_GL_GetProcAddress("glAttachObjectARB");
-				if (!glAttachObjectARB) LOG_MSG("opengl: glAttachObjectARB extension not supported");
+				vglAttachObjectARB = (PFNGLATTACHOBJECTARBPROC)SDL_GL_GetProcAddress("glAttachObjectARB");
+				if (!vglAttachObjectARB) LOG_MSG("opengl: glAttachObjectARB extension not supported");
 
-				glLinkProgramARB = (PFNGLLINKPROGRAMARBPROC)SDL_GL_GetProcAddress("glLinkProgramARB");
-				if (!glLinkProgramARB) LOG_MSG("opengl: glLinkProgramARB extension not supported");
+				vglLinkProgramARB = (PFNGLLINKPROGRAMARBPROC)SDL_GL_GetProcAddress("glLinkProgramARB");
+				if (!vglLinkProgramARB) LOG_MSG("opengl: glLinkProgramARB extension not supported");
 
-				glUseProgramObjectARB = (PFNGLUSEPROGRAMOBJECTARBPROC)SDL_GL_GetProcAddress("glUseProgramObjectARB");
-				if (!glUseProgramObjectARB) LOG_MSG("opengl: glUseProgramObjectARB extension not supported");
+				vglUseProgramObjectARB = (PFNGLUSEPROGRAMOBJECTARBPROC)SDL_GL_GetProcAddress("glUseProgramObjectARB");
+				if (!vglUseProgramObjectARB) LOG_MSG("opengl: glUseProgramObjectARB extension not supported");
 
-				glUniform1iARB = (PFNGLUNIFORM1IARBPROC)SDL_GL_GetProcAddress("glUniform1iARB");
-				if (!glUniform1iARB) LOG_MSG("opengl: glUniform1iARB extension not supported");
+				vglUniform1iARB = (PFNGLUNIFORM1IARBPROC)SDL_GL_GetProcAddress("glUniform1iARB");
+				if (!vglUniform1iARB) LOG_MSG("opengl: glUniform1iARB extension not supported");
 
-				glUniform1fARB = (PFNGLUNIFORM1FARBPROC)SDL_GL_GetProcAddress("glUniform1fARB");
-				if (!glUniform1fARB) LOG_MSG("opengl: glUniform1fARB extension not supported");
+				vglUniform1fARB = (PFNGLUNIFORM1FARBPROC)SDL_GL_GetProcAddress("glUniform1fARB");
+				if (!vglUniform1fARB) LOG_MSG("opengl: glUniform1fARB extension not supported");
 
-				glUniform2fARB = (PFNGLUNIFORM2FARBPROC)SDL_GL_GetProcAddress("glUniform2fARB");
-				if (!glUniform2fARB) LOG_MSG("opengl: glUniform2fARB extension not supported");
+				vglUniform2fARB = (PFNGLUNIFORM2FARBPROC)SDL_GL_GetProcAddress("glUniform2fARB");
+				if (!vglUniform2fARB) LOG_MSG("opengl: glUniform2fARB extension not supported");
 
-				glUniform3fARB = (PFNGLUNIFORM3FARBPROC)SDL_GL_GetProcAddress("glUniform3fARB");
-				if (!glUniform3fARB) LOG_MSG("opengl: glUniform3fARB extension not supported");
+				vglUniform3fARB = (PFNGLUNIFORM3FARBPROC)SDL_GL_GetProcAddress("glUniform3fARB");
+				if (!vglUniform3fARB) LOG_MSG("opengl: glUniform3fARB extension not supported");
 
-				glUniform4fARB = (PFNGLUNIFORM4FARBPROC)SDL_GL_GetProcAddress("glUniform4fARB");
-				if (!glUniform4fARB) LOG_MSG("opengl: glUniform4fARB extension not supported");
+				vglUniform4fARB = (PFNGLUNIFORM4FARBPROC)SDL_GL_GetProcAddress("glUniform4fARB");
+				if (!vglUniform4fARB) LOG_MSG("opengl: glUniform4fARB extension not supported");
 
-				glGetUniformLocationARB = (PFNGLGETUNIFORMLOCATIONARBPROC)SDL_GL_GetProcAddress("glGetUniformLocationARB");
-				if (!glGetUniformLocationARB) LOG_MSG("opengl: glGetUniformLocationARB extension not supported");
+				vglGetUniformLocationARB = (PFNGLGETUNIFORMLOCATIONARBPROC)SDL_GL_GetProcAddress("glGetUniformLocationARB");
+				if (!vglGetUniformLocationARB) LOG_MSG("opengl: glGetUniformLocationARB extension not supported");
 
-				glDetachObjectARB = (PFNGLDETACHOBJECTARBPROC)SDL_GL_GetProcAddress("glDetachObjectARB");
-				if (!glDetachObjectARB) LOG_MSG("opengl: glDetachObjectARB extension not supported");
+				vglDetachObjectARB = (PFNGLDETACHOBJECTARBPROC)SDL_GL_GetProcAddress("glDetachObjectARB");
+				if (!vglDetachObjectARB) LOG_MSG("opengl: glDetachObjectARB extension not supported");
 
-				glDeleteObjectARB  = (PFNGLDELETEOBJECTARBPROC)SDL_GL_GetProcAddress("glDeleteObjectARB");
-				if (!glDeleteObjectARB) LOG_MSG("opengl: glDeleteObjectARB extension not supported");
+				vglDeleteObjectARB  = (PFNGLDELETEOBJECTARBPROC)SDL_GL_GetProcAddress("glDeleteObjectARB");
+				if (!vglDeleteObjectARB) LOG_MSG("opengl: glDeleteObjectARB extension not supported");
 
-				glGetObjectParameterivARB = (PFNGLGETOBJECTPARAMETERIVARBPROC)SDL_GL_GetProcAddress("glGetObjectParameterivARB");
-				if (!glGetObjectParameterivARB) LOG_MSG("opengl: glGetObjectParameterivARB extension not supported");
+				vglGetObjectParameterivARB = (PFNGLGETOBJECTPARAMETERIVARBPROC)SDL_GL_GetProcAddress("glGetObjectParameterivARB");
+				if (!vglGetObjectParameterivARB) LOG_MSG("opengl: glGetObjectParameterivARB extension not supported");
 
-				glGetInfoLogARB = (PFNGLGETINFOLOGARBPROC)SDL_GL_GetProcAddress("glGetInfoLogARB");
-				if (!glGetInfoLogARB) LOG_MSG("opengl: glGetInfoLogARB extension not supported");
+				vglGetInfoLogARB = (PFNGLGETINFOLOGARBPROC)SDL_GL_GetProcAddress("glGetInfoLogARB");
+				if (!vglGetInfoLogARB) LOG_MSG("opengl: glGetInfoLogARB extension not supported");
 
-				glGetAttribLocationARB = (PFNGLGETATTRIBLOCATIONARBPROC)SDL_GL_GetProcAddress("glGetAttribLocationARB");
-				if (!glGetAttribLocationARB) LOG_MSG("opengl: glGetAttribLocationARB extension not supported");
+				vglGetAttribLocationARB = (PFNGLGETATTRIBLOCATIONARBPROC)SDL_GL_GetProcAddress("glGetAttribLocationARB");
+				if (!vglGetAttribLocationARB) LOG_MSG("opengl: glGetAttribLocationARB extension not supported");
 			
-				glVertexAttrib1fARB = (PFNGLVERTEXATTRIB1FARBPROC)SDL_GL_GetProcAddress("glVertexAttrib1fARB");
-				if (!glVertexAttrib1fARB) LOG_MSG("opengl: glVertexAttrib1fARB extension not supported");
+				vglVertexAttrib1fARB = (PFNGLVERTEXATTRIB1FARBPROC)SDL_GL_GetProcAddress("glVertexAttrib1fARB");
+				if (!vglVertexAttrib1fARB) LOG_MSG("opengl: glVertexAttrib1fARB extension not supported");
 
-				if (glShaderSourceARB && glCompileShaderARB && glCreateProgramObjectARB &&
-					glAttachObjectARB && glLinkProgramARB && glUseProgramObjectARB &&
-					glUniform1iARB && glUniform1fARB && glUniform2fARB && glUniform3fARB &&
-					glUniform4fARB && glGetUniformLocationARB && glDetachObjectARB &&
-					glDeleteObjectARB && glGetObjectParameterivARB && glGetInfoLogARB) {
+				if (vglShaderSourceARB && vglCompileShaderARB && vglCreateProgramObjectARB &&
+					vglAttachObjectARB && vglLinkProgramARB && vglUseProgramObjectARB &&
+					vglUniform1iARB && vglUniform1fARB && vglUniform2fARB && vglUniform3fARB &&
+					vglUniform4fARB && vglGetUniformLocationARB && vglDetachObjectARB &&
+					vglDeleteObjectARB && vglGetObjectParameterivARB && vglGetInfoLogARB) {
 						VOGL_FlagFeature(VOGL_HAS_SHADERS);
 //						LOG_MSG("opengl: shader functionality enabled");
 				} else {
@@ -380,7 +380,7 @@ void VOGL_SetAlphaMode(Bit32s enabled_mode,GLuint src_rgb_fac,GLuint dst_rgb_fac
 			current_alpha_enabled=1;
 			if ((current_src_rgb_fac!=(Bit32s)src_rgb_fac) || (current_dst_rgb_fac!=(Bit32s)dst_rgb_fac) ||
 				(current_src_alpha_fac!=(Bit32s)src_alpha_fac) || (current_dst_alpha_fac!=(Bit32s)dst_alpha_fac)) {
-				glBlendFuncSeparateEXT(src_rgb_fac, dst_rgb_fac, src_alpha_fac, dst_alpha_fac);
+				vglBlendFuncSeparateEXT(src_rgb_fac, dst_rgb_fac, src_alpha_fac, dst_alpha_fac);
 				current_src_rgb_fac=(Bit32s)src_rgb_fac;
 				current_dst_rgb_fac=(Bit32s)dst_rgb_fac;
 				current_src_alpha_fac=(Bit32s)src_alpha_fac;
@@ -395,7 +395,7 @@ void VOGL_SetAlphaMode(Bit32s enabled_mode,GLuint src_rgb_fac,GLuint dst_rgb_fac
 			if ((current_src_rgb_fac!=(Bit32s)src_rgb_fac) || (current_dst_rgb_fac!=(Bit32s)dst_rgb_fac) ||
 				(current_src_alpha_fac!=(Bit32s)src_alpha_fac) || (current_dst_alpha_fac!=(Bit32s)dst_alpha_fac)) {
 				VOGL_ClearBeginMode();
-				glBlendFuncSeparateEXT(src_rgb_fac, dst_rgb_fac, src_alpha_fac, dst_alpha_fac);
+				vglBlendFuncSeparateEXT(src_rgb_fac, dst_rgb_fac, src_alpha_fac, dst_alpha_fac);
 				current_src_rgb_fac=(Bit32s)src_rgb_fac;
 				current_dst_rgb_fac=(Bit32s)dst_rgb_fac;
 				current_src_alpha_fac=(Bit32s)src_alpha_fac;

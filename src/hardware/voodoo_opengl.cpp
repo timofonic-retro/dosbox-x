@@ -481,8 +481,8 @@ void ogl_cache_texture(const poly_extra_data *extra, ogl_texture_data *td) {
 				glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,TEXMODE_CLAMP_S(TEXMODE)?GL_CLAMP_TO_EDGE:GL_REPEAT);
 				glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,TEXMODE_CLAMP_T(TEXMODE)?GL_CLAMP_TO_EDGE:GL_REPEAT);
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, smax, tmax, 0, GL_BGRA_EXT, GL_UNSIGNED_INT_8_8_8_8_REV, texrgbp);
-				extern PFNGLGENERATEMIPMAPEXTPROC glGenerateMipmapEXT;
-				glGenerateMipmapEXT(GL_TEXTURE_2D);
+				extern PFNGLGENERATEMIPMAPEXTPROC vglGenerateMipmapEXT;
+				vglGenerateMipmapEXT(GL_TEXTURE_2D);
 				UINT32 palsum=0;
 				if ((TEXMODE_FORMAT(v->tmu[j].reg[textureMode].u)==0x05) || (TEXMODE_FORMAT(v->tmu[j].reg[textureMode].u)==0x0e)) {
 					palsum = calculate_palsum(j);
@@ -532,12 +532,12 @@ void ogl_printInfoLog(GLhandleARB obj)
     int charsWritten  = 0;
     char *infoLog;
 
-    glGetObjectParameterivARB(obj, GL_OBJECT_INFO_LOG_LENGTH_ARB, &infologLength);
+    vglGetObjectParameterivARB(obj, GL_OBJECT_INFO_LOG_LENGTH_ARB, &infologLength);
 
     if (infologLength > 0)
     {
 		infoLog = (char *)malloc(infologLength);
-		glGetInfoLogARB(obj, infologLength, &charsWritten, infoLog);
+		vglGetInfoLogARB(obj, infologLength, &charsWritten, infoLog);
 		LOG_MSG("%s\n",infoLog);
 		free(infoLog);
     }
@@ -919,7 +919,7 @@ void ogl_shaders(const poly_extra_data *extra) {
 	std::string strVShader, strFShader;
 
 	/* shaders extensions not loaded */
-	if (!glCreateShaderObjectARB) return;
+	if (!vglCreateShaderObjectARB) return;
 
 	UINT32 FBZMODE      = extra->r_fbzMode;
 	UINT32 FOGMODE      = extra->r_fogMode;
@@ -935,7 +935,7 @@ void ogl_shaders(const poly_extra_data *extra) {
 			if (fcount>1000) E_Exit("opengl error");
 		}
 
-		GLhandleARB m_hVertexShader = glCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
+		GLhandleARB m_hVertexShader = vglCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
 
 		strVShader =
 			"attribute float v_fogblend;\n"
@@ -957,13 +957,13 @@ void ogl_shaders(const poly_extra_data *extra) {
 			"}\n";
 
 		const char *szVShader = strVShader.c_str();
-		glShaderSourceARB(m_hVertexShader, 1, &szVShader, NULL);
-		glCompileShaderARB(m_hVertexShader);
-		glGetObjectParameterivARB(m_hVertexShader, GL_OBJECT_COMPILE_STATUS_ARB, &res);
+		vglShaderSourceARB(m_hVertexShader, 1, &szVShader, NULL);
+		vglCompileShaderARB(m_hVertexShader);
+		vglGetObjectParameterivARB(m_hVertexShader, GL_OBJECT_COMPILE_STATUS_ARB, &res);
 		if(res == 0) {
 			char infobuffer[1000];
 			int infobufferlen = 0;
-			glGetInfoLogARB(m_hVertexShader, 999, &infobufferlen, infobuffer);
+			vglGetInfoLogARB(m_hVertexShader, 999, &infobufferlen, infobuffer);
 			infobuffer[infobufferlen] = 0;
 			ogl_printInfoLog(m_hVertexShader);
 			E_Exit("ERROR: Error compiling vertex shader");
@@ -971,7 +971,7 @@ void ogl_shaders(const poly_extra_data *extra) {
 		}
 
 		/* create fragment shader */
-		GLhandleARB m_hFragmentShader = glCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
+		GLhandleARB m_hFragmentShader = vglCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
 		strFShader =
 			"varying float f_fogblend;\n"
 			"varying float f_lodblend0;\n"
@@ -1026,10 +1026,10 @@ void ogl_shaders(const poly_extra_data *extra) {
 			"}";
 
 		const char *szFShader = strFShader.c_str();
-		glShaderSourceARB(m_hFragmentShader, 1, &szFShader, NULL);
+		vglShaderSourceARB(m_hFragmentShader, 1, &szFShader, NULL);
 
-		glCompileShaderARB(m_hFragmentShader);
-		glGetObjectParameterivARB(m_hFragmentShader, GL_OBJECT_COMPILE_STATUS_ARB, &res);
+		vglCompileShaderARB(m_hFragmentShader);
+		vglGetObjectParameterivARB(m_hFragmentShader, GL_OBJECT_COMPILE_STATUS_ARB, &res);
 		if(res == 0) {
 			ogl_printInfoLog(m_hFragmentShader);
 			E_Exit("ERROR: Error compiling fragment shader");
@@ -1038,14 +1038,14 @@ void ogl_shaders(const poly_extra_data *extra) {
 
 
 		/* create program object */
-		m_hProgramObject = glCreateProgramObjectARB();
+		m_hProgramObject = vglCreateProgramObjectARB();
 
-		glAttachObjectARB(m_hProgramObject, m_hVertexShader);
-		glAttachObjectARB(m_hProgramObject, m_hFragmentShader);
+		vglAttachObjectARB(m_hProgramObject, m_hVertexShader);
+		vglAttachObjectARB(m_hProgramObject, m_hFragmentShader);
 
-		glLinkProgramARB(m_hProgramObject);
+		vglLinkProgramARB(m_hProgramObject);
 
-		glGetObjectParameterivARB(m_hProgramObject, GL_OBJECT_LINK_STATUS_ARB, &res);
+		vglGetObjectParameterivARB(m_hProgramObject, GL_OBJECT_LINK_STATUS_ARB, &res);
 		if(res == 0) {
 			ogl_printInfoLog(m_hProgramObject);
 			E_Exit("ERROR: Error linking program");
@@ -1053,7 +1053,7 @@ void ogl_shaders(const poly_extra_data *extra) {
 		}
 
 		/* use this shader */
-		glUseProgramObjectARB(m_hProgramObject);
+		vglUseProgramObjectARB(m_hProgramObject);
 		extra->info->so_shader_program=(UINT32)m_hProgramObject;
 		extra->info->so_vertex_shader=(UINT32)m_hVertexShader;
 		extra->info->so_fragment_shader=(UINT32)m_hFragmentShader;
@@ -1066,35 +1066,35 @@ void ogl_shaders(const poly_extra_data *extra) {
 		}
 
 		int* locations=new int[12];
-		locations[0]=glGetUniformLocationARB(m_hProgramObject, "chromaKey");
-		locations[1]=glGetUniformLocationARB(m_hProgramObject, "chromaRange");
-		locations[2]=glGetUniformLocationARB(m_hProgramObject, "color0");
-		locations[3]=glGetUniformLocationARB(m_hProgramObject, "color1");
-		locations[4]=glGetUniformLocationARB(m_hProgramObject, "alphaRef");
-		locations[5]=glGetUniformLocationARB(m_hProgramObject, "zaColor");
-		locations[6]=glGetUniformLocationARB(m_hProgramObject, "tex0");
-		locations[7]=glGetUniformLocationARB(m_hProgramObject, "tex1");
-		locations[8]=glGetUniformLocationARB(m_hProgramObject, "fogColor");
+		locations[0]=vglGetUniformLocationARB(m_hProgramObject, "chromaKey");
+		locations[1]=vglGetUniformLocationARB(m_hProgramObject, "chromaRange");
+		locations[2]=vglGetUniformLocationARB(m_hProgramObject, "color0");
+		locations[3]=vglGetUniformLocationARB(m_hProgramObject, "color1");
+		locations[4]=vglGetUniformLocationARB(m_hProgramObject, "alphaRef");
+		locations[5]=vglGetUniformLocationARB(m_hProgramObject, "zaColor");
+		locations[6]=vglGetUniformLocationARB(m_hProgramObject, "tex0");
+		locations[7]=vglGetUniformLocationARB(m_hProgramObject, "tex1");
+		locations[8]=vglGetUniformLocationARB(m_hProgramObject, "fogColor");
 
-		locations[9] = glGetAttribLocationARB(m_hProgramObject, "v_fogblend");
-		locations[10] = glGetAttribLocationARB(m_hProgramObject, "v_lodblend0");
-		locations[11] = glGetAttribLocationARB(m_hProgramObject, "v_lodblend1");
+		locations[9] = vglGetAttribLocationARB(m_hProgramObject, "v_fogblend");
+		locations[10] = vglGetAttribLocationARB(m_hProgramObject, "v_lodblend0");
+		locations[11] = vglGetAttribLocationARB(m_hProgramObject, "v_lodblend1");
 		extra->info->shader_ulocations=locations;
 	} else {
 		/* use existing shader program */
 		if (m_hProgramObject != (GLhandleARB)extra->info->so_shader_program) {
-			glUseProgramObjectARB((GLhandleARB)extra->info->so_shader_program);
+			vglUseProgramObjectARB((GLhandleARB)extra->info->so_shader_program);
 			m_hProgramObject = (GLhandleARB)extra->info->so_shader_program;
 		}
 	}
 
-	if (extra->info->shader_ulocations[0]>=0) glUniform4fARB(extra->info->shader_ulocations[0], v->reg[chromaKey].rgb.r/255.0f, v->reg[chromaKey].rgb.g/255.0f, v->reg[chromaKey].rgb.b/255.0f,0);
-	if (extra->info->shader_ulocations[1]>=0) glUniform4fARB(extra->info->shader_ulocations[1], v->reg[chromaRange].rgb.r/255.0f, v->reg[chromaRange].rgb.g/255.0f, v->reg[chromaRange].rgb.b/255.0f,0);
-	if (extra->info->shader_ulocations[2]>=0) glUniform4fARB(extra->info->shader_ulocations[2], v->reg[color0].rgb.r/255.0f, v->reg[color0].rgb.g/255.0f, v->reg[color0].rgb.b/255.0f, v->reg[color0].rgb.a/255.0f);
-	if (extra->info->shader_ulocations[3]>=0) glUniform4fARB(extra->info->shader_ulocations[3], v->reg[color1].rgb.r/255.0f, v->reg[color1].rgb.g/255.0f, v->reg[color1].rgb.b/255.0f, v->reg[color1].rgb.a/255.0f);
-	if (extra->info->shader_ulocations[4]>=0) glUniform1fARB(extra->info->shader_ulocations[4], v->reg[alphaMode].rgb.a/255.0f);
-	if (extra->info->shader_ulocations[5]>=0) glUniform1fARB(extra->info->shader_ulocations[5], (float)((UINT16)v->reg[zaColor].u)/65535.0f);
-	if (extra->info->shader_ulocations[8]>=0) glUniform4fARB(extra->info->shader_ulocations[8], v->reg[fogColor].rgb.r/255.0f, v->reg[fogColor].rgb.g/255.0f, v->reg[fogColor].rgb.b/255.0f,1.0f);
+	if (extra->info->shader_ulocations[0]>=0) vglUniform4fARB(extra->info->shader_ulocations[0], v->reg[chromaKey].rgb.r/255.0f, v->reg[chromaKey].rgb.g/255.0f, v->reg[chromaKey].rgb.b/255.0f,0);
+	if (extra->info->shader_ulocations[1]>=0) vglUniform4fARB(extra->info->shader_ulocations[1], v->reg[chromaRange].rgb.r/255.0f, v->reg[chromaRange].rgb.g/255.0f, v->reg[chromaRange].rgb.b/255.0f,0);
+	if (extra->info->shader_ulocations[2]>=0) vglUniform4fARB(extra->info->shader_ulocations[2], v->reg[color0].rgb.r/255.0f, v->reg[color0].rgb.g/255.0f, v->reg[color0].rgb.b/255.0f, v->reg[color0].rgb.a/255.0f);
+	if (extra->info->shader_ulocations[3]>=0) vglUniform4fARB(extra->info->shader_ulocations[3], v->reg[color1].rgb.r/255.0f, v->reg[color1].rgb.g/255.0f, v->reg[color1].rgb.b/255.0f, v->reg[color1].rgb.a/255.0f);
+	if (extra->info->shader_ulocations[4]>=0) vglUniform1fARB(extra->info->shader_ulocations[4], v->reg[alphaMode].rgb.a/255.0f);
+	if (extra->info->shader_ulocations[5]>=0) vglUniform1fARB(extra->info->shader_ulocations[5], (float)((UINT16)v->reg[zaColor].u)/65535.0f);
+	if (extra->info->shader_ulocations[8]>=0) vglUniform4fARB(extra->info->shader_ulocations[8], v->reg[fogColor].rgb.r/255.0f, v->reg[fogColor].rgb.g/255.0f, v->reg[fogColor].rgb.b/255.0f,1.0f);
 
 }
 
@@ -1120,7 +1120,7 @@ void voodoo_ogl_draw_triangle(poly_extra_data *extra) {
 
 	if (FBZMODE_DEPTH_SOURCE_COMPARE(FBZMODE) && VOGL_CheckFeature(VOGL_HAS_STENCIL_BUFFER)) {
 		if (m_hProgramObject != 0) {
-			glUseProgramObjectARB(0);
+			vglUseProgramObjectARB(0);
 			m_hProgramObject = 0;
 		}
 
@@ -1164,7 +1164,7 @@ void voodoo_ogl_draw_triangle(poly_extra_data *extra) {
 		for (int t=0; t<2; t++)
 		if ( td[t].enable ) {
 			UINT32 TEXMODE = v->tmu[t].reg[textureMode].u;
-			glActiveTextureARB(GL_TEXTURE0_ARB+t);
+			vglActiveTextureARB(GL_TEXTURE0_ARB+t);
 			glBindTexture (GL_TEXTURE_2D, td[t].texID);
 			if (!extra->info->shader_ready) {
 				glEnable (GL_TEXTURE_2D);
@@ -1172,7 +1172,7 @@ void voodoo_ogl_draw_triangle(poly_extra_data *extra) {
 				glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 			} else {
 				if (extra->info->shader_ulocations[6+t] >= 0)
-					glUniform1iARB(extra->info->shader_ulocations[6+t],t);
+					vglUniform1iARB(extra->info->shader_ulocations[6+t],t);
 			}
 
 			GLint minFilter;
@@ -1247,11 +1247,11 @@ void voodoo_ogl_draw_triangle(poly_extra_data *extra) {
 			if (td[t].enable) {
 				glMultiTexCoord4fvARB(GL_TEXTURE0_ARB+t,&vd[i].m[t].sw);
 				if (extra->info->shader_ulocations[10+t] >= 0)
-					glVertexAttrib1fARB(extra->info->shader_ulocations[10+t],vd[i].m[t].lodblend);
+					vglVertexAttrib1fARB(extra->info->shader_ulocations[10+t],vd[i].m[t].lodblend);
 			}
 
 		if (extra->info->shader_ulocations[9] >= 0)
-			glVertexAttrib1fARB(extra->info->shader_ulocations[9],vd[i].fogblend);
+			vglVertexAttrib1fARB(extra->info->shader_ulocations[9],vd[i].fogblend);
 
 		glVertex3fv(&vd[i].x);
 	}
@@ -1303,7 +1303,7 @@ void voodoo_ogl_texture_clear(UINT32 texbase, int TMU) {
 
 void voodoo_ogl_draw_pixel(int x, int y, bool has_rgb, bool has_alpha, int r, int g, int b, int a) {
 	if (m_hProgramObject != 0) {
-		glUseProgramObjectARB(0);
+		vglUseProgramObjectARB(0);
 		m_hProgramObject = 0;
 	}
 
@@ -1330,7 +1330,7 @@ void voodoo_ogl_draw_z(int x, int y, int z) {
 //	VOGL_ClearBeginMode();
 
 	if (m_hProgramObject != 0) {
-		glUseProgramObjectARB(0);
+		vglUseProgramObjectARB(0);
 		m_hProgramObject = 0;
 	}
 
@@ -1359,7 +1359,7 @@ void voodoo_ogl_draw_pixel_pipeline(int x, int y, int r, int g, int b) {
 
 	// TODO redo everything //
 	if (m_hProgramObject != 0) {
-		glUseProgramObjectARB(0);
+		vglUseProgramObjectARB(0);
 		m_hProgramObject = 0;
 	}
 
@@ -1796,7 +1796,7 @@ void voodoo_ogl_leave(bool leavemode) {
 
 
 	if (m_hProgramObject != 0) {
-		glUseProgramObjectARB(0);
+		vglUseProgramObjectARB(0);
 		m_hProgramObject = 0;
 	}
 
@@ -1808,11 +1808,11 @@ void voodoo_ogl_leave(bool leavemode) {
 				info->shader_ulocations=NULL;
 
 				if (info->so_shader_program > 0) {
-					if (info->so_vertex_shader >= 0) glDetachObjectARB((GLhandleARB)info->so_shader_program, (GLhandleARB)info->so_vertex_shader);
-					if (info->so_fragment_shader >= 0) glDetachObjectARB((GLhandleARB)info->so_shader_program, (GLhandleARB)info->so_fragment_shader);
-					if (info->so_vertex_shader >= 0) glDeleteObjectARB((GLhandleARB)info->so_vertex_shader);
-					if (info->so_fragment_shader >= 0) glDeleteObjectARB((GLhandleARB)info->so_fragment_shader);
-					glDeleteObjectARB((GLhandleARB)info->so_shader_program);
+					if (info->so_vertex_shader >= 0) vglDetachObjectARB((GLhandleARB)info->so_shader_program, (GLhandleARB)info->so_vertex_shader);
+					if (info->so_fragment_shader >= 0) vglDetachObjectARB((GLhandleARB)info->so_shader_program, (GLhandleARB)info->so_fragment_shader);
+					if (info->so_vertex_shader >= 0) vglDeleteObjectARB((GLhandleARB)info->so_vertex_shader);
+					if (info->so_fragment_shader >= 0) vglDeleteObjectARB((GLhandleARB)info->so_fragment_shader);
+					vglDeleteObjectARB((GLhandleARB)info->so_shader_program);
 				}
 
 				info->shader_ready=false;
