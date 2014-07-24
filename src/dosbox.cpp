@@ -774,13 +774,6 @@ void DOSBOX_Init(void) {
 #endif
 		"normal", "full", "simple", 0 };
 
-	const char* voodoo_settings[] = {
-		"false",
-		"software",
-		"auto",
-		0
-	};
-
 #ifdef __SSE__
 	CheckSSESupport();
 #endif
@@ -1224,6 +1217,15 @@ void DOSBOX_Init(void) {
 	secprop=control->AddSection_prop("pci",&PCI_Init,false); //PCI bus
 
 	secprop->AddInitFunction(&VOODOO_Init,true);
+	const char* voodoo_settings[] = {
+		"false",
+		"software",
+#if C_OPENGL
+		"opengl",
+#endif
+		"auto",
+		0
+	};
 	Pstring = secprop->Add_string("voodoo",Property::Changeable::WhenIdle,"auto");
 	Pstring->Set_values(voodoo_settings);
 	Pstring->Set_help("Enable VOODOO support.");

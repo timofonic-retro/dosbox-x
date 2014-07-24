@@ -684,6 +684,11 @@ void voodoo_swap_buffers(voodoo_state *v)
 {
 //	if (LOG_VBLANK_SWAP) LOG(LOG_VOODOO,LOG_WARN)("--- swap_buffers @ %d\n", video_screen_get_vpos(v->screen));
 
+	if (v->ogl && v->active) {
+		voodoo_ogl_swap_buffer();
+		return;
+	}
+
 	/* keep a history of swap intervals */
 	v->reg[fbiSwapHistory].u = (v->reg[fbiSwapHistory].u << 4);
 
@@ -1573,7 +1578,14 @@ void register_w(UINT32 offset, UINT32 data) {
 			if (v->type < VOODOO_2)
 				data &= 0x001fffff;
 			if (chips & 1) {
-				v->reg[fbzMode].u = data;
+				if (v->ogl && v->active && (FBZMODE_Y_ORIGIN(v->reg[fbzMode].u)!=FBZMODE_Y_ORIGIN(data))) {
+					v->reg[fbzMode].u = data;
+					CPU_Core_Dyn_X86_SaveDHFPUState();
+					voodoo_ogl_set_window(v);
+					CPU_Core_Dyn_X86_RestoreDHFPUState();
+				} else {
+					v->reg[fbzMode].u = data;
+				}
 			}
 			break;
 
@@ -1753,6 +1765,7 @@ void register_w(UINT32 offset, UINT32 data) {
 					if ((v->fbi.width != new_width) || (v->fbi.height != new_height)) {
 						v->fbi.width = new_width;
 						v->fbi.height = new_height;
+						v->ogl_dimchange = true;
 					}
 //					v->fbi.xoffs = hbp;
 //					v->fbi.yoffs = vbp;
@@ -1925,6 +1938,11 @@ void register_w(UINT32 offset, UINT32 data) {
 		case clipLowYHighY:
 		case clipLeftRight:
 			if (chips & 1) v->reg[0x000 + regnum].u = data;
+			if (v->ogl) {
+				CPU_Core_Dyn_X86_SaveDHFPUState();
+				voodoo_ogl_clip_window(v);
+				CPU_Core_Dyn_X86_RestoreDHFPUState();
+			}
 			break;
 
 		/* these registers are referenced in the renderer; we must wait for pending work before changing */
@@ -2216,25 +2234,37 @@ void lfb_w(UINT32 offset, UINT32 data, UINT32 mem_mask) {
 				bool has_rgb = (mask & LFB_RGB_PRESENT) > 0;
 				bool has_alpha = ((mask & LFB_ALPHA_PRESENT) > 0) && (FBZMODE_ENABLE_ALPHA_PLANES(v->reg[fbzMode].u) > 0);
 				bool has_depth = ((mask & (LFB_DEPTH_PRESENT | LFB_DEPTH_PRESENT_MSW)) && !FBZMODE_ENABLE_ALPHA_PLANES(v->reg[fbzMode].u));
+				if (v->ogl && v->active) {
+					if (has_rgb || has_alpha) {
+						// if enabling dithering: output is 565 not 888 anymore
+//						APPLY_DITHER(v->reg[fbzMode].u, x, dither_lookup, sr[pix], sg[pix], sb[pix]);
+						voodoo_ogl_draw_pixel(x, scry+1, has_rgb, has_alpha, sr[pix], sg[pix], sb[pix], sa[pix]);
+					}
+					if (has_depth) {
+#if 0 /* HOW DO WE DO THIS NON-OPENGL? */
+						voodoo_ogl_draw_z(x, scry+1, sw[pix]);
+#endif
+					}
+				} else {
+					/* write to the RGB buffer */
+					if (has_rgb && bufoffs < destmax)
+					{
+						/* apply dithering and write to the screen */
+						APPLY_DITHER(v->reg[fbzMode].u, x, dither_lookup, sr[pix], sg[pix], sb[pix]);
+						dest[bufoffs] = (UINT16)((sr[pix] << 11) | (sg[pix] << 5) | sb[pix]);
+					}
 
-				/* write to the RGB buffer */
-				if (has_rgb && bufoffs < destmax)
-				{
-					/* apply dithering and write to the screen */
-					APPLY_DITHER(v->reg[fbzMode].u, x, dither_lookup, sr[pix], sg[pix], sb[pix]);
-					dest[bufoffs] = (UINT16)((sr[pix] << 11) | (sg[pix] << 5) | sb[pix]);
-				}
+					/* make sure we have an aux buffer to write to */
+					if (depth && bufoffs < depthmax)
+					{
+						/* write to the alpha buffer */
+						if (has_alpha)
+							depth[bufoffs] = (UINT16)sa[pix];
 
-				/* make sure we have an aux buffer to write to */
-				if (depth && bufoffs < depthmax)
-				{
-					/* write to the alpha buffer */
-					if (has_alpha)
-						depth[bufoffs] = (UINT16)sa[pix];
-
-					/* write to the depth buffer */
-					if (has_depth)
-						depth[bufoffs] = (UINT16)sw[pix];
+						/* write to the depth buffer */
+						if (has_depth)
+							depth[bufoffs] = (UINT16)sw[pix];
+					}
 				}
 
 				/* track pixel writes to the frame buffer regardless of mask */
@@ -2294,6 +2324,7 @@ void lfb_w(UINT32 offset, UINT32 data, UINT32 mem_mask) {
 				}
 
 				/* pixel pipeline part 1 handles depth testing and stippling */
+				// TODO: in the v->ogl case this macro doesn't really work with depth testing
 				PIXEL_PIPELINE_BEGIN(v, x, y, v->reg[fbzColorPath].u, v->reg[fbzMode].u, iterz, iterw);
 
 				color.rgb.r = sr[pix];
@@ -2514,10 +2545,23 @@ void lfb_w(UINT32 offset, UINT32 data, UINT32 mem_mask) {
 				if (FBZCP_CCA_INVERT_OUTPUT(v->reg[fbzColorPath].u))
 					a ^= 0xff;
 
-				/* pixel pipeline part 2 handles color combine, fog, alpha, and final output */
-				PIXEL_PIPELINE_MODIFY(v, dither, dither4, x, v->reg[fbzMode].u, v->reg[fbzColorPath].u, v->reg[alphaMode].u, v->reg[fogMode].u, iterz, iterw, v->reg[zaColor]);
+				if (v->ogl && v->active) {
+					if (FBZMODE_RGB_BUFFER_MASK(v->reg[fbzMode].u)) {
+//						APPLY_DITHER(FBZMODE, XX, DITHER_LOOKUP, r, g, b);
+						voodoo_ogl_draw_pixel_pipeline(x, scry+1, r, g, b);
+					}
+/*					if (depth && FBZMODE_AUX_BUFFER_MASK(v->reg[fbzMode].u)) {
+						if (FBZMODE_ENABLE_ALPHA_PLANES(v->reg[fbzMode].u) == 0)
+							voodoo_ogl_draw_z(x, y, depthval&0xffff, depthval>>16);
+//						else
+//							depth[XX] = a;
+					} */
+				} else {
+					/* pixel pipeline part 2 handles color combine, fog, alpha, and final output */
+					PIXEL_PIPELINE_MODIFY(v, dither, dither4, x, v->reg[fbzMode].u, v->reg[fbzColorPath].u, v->reg[alphaMode].u, v->reg[fogMode].u, iterz, iterw, v->reg[zaColor]);
 
-				PIXEL_PIPELINE_FINISH(v, dither_lookup, x, dest, depth, v->reg[fbzMode].u);
+					PIXEL_PIPELINE_FINISH(v, dither_lookup, x, dest, depth, v->reg[fbzMode].u);
+				}
 
 				PIXEL_PIPELINE_END(stats);
 			}
@@ -2609,6 +2653,11 @@ INT32 texture_w(UINT32 offset, UINT32 data) {
 			dest[BYTE4_XOR_LE(tbaseaddr + 3)] = (data >> 24) & 0xff;
 			changed = true;
 		}
+
+		if (changed && v->ogl && v->active) {
+			voodoo_ogl_texture_clear(t->lodoffset[lod],tmunum);
+			voodoo_ogl_texture_clear(t->lodoffset[t->lodmin],tmunum);
+		}
 	}
 
 	/* 16-bit texture case */
@@ -2647,6 +2696,11 @@ INT32 texture_w(UINT32 offset, UINT32 data) {
 		if (dest[BYTE_XOR_LE(tbaseaddr + 1)] != ((data >> 16) & 0xffff)) {
 			dest[BYTE_XOR_LE(tbaseaddr + 1)] = (data >> 16) & 0xffff;
 			changed = true;
+		}
+
+		if (changed && v->ogl && v->active) {
+			voodoo_ogl_texture_clear(t->lodoffset[lod],tmunum);
+			voodoo_ogl_texture_clear(t->lodoffset[t->lodmin],tmunum);
 		}
 	}
 
@@ -2830,13 +2884,17 @@ UINT32 lfb_r(UINT32 offset)
 	if (LFBMODE_Y_ORIGIN(v->reg[lfbMode].u))
 		scry = (v->fbi.yorigin - y) & 0x3ff;
 
-	/* advance pointers to the proper row */
-	bufoffs = scry * v->fbi.rowpixels + x;
-	if (bufoffs >= bufmax)
-		return 0xffffffff;
+	if (v->ogl && v->active) {
+		data = voodoo_ogl_read_pixel(x, scry+1);
+	} else {
+		/* advance pointers to the proper row */
+		bufoffs = scry * v->fbi.rowpixels + x;
+		if (bufoffs >= bufmax)
+			return 0xffffffff;
 
-	/* compute the data */
-	data = buffer[bufoffs + 0] | (buffer[bufoffs + 1] << 16);
+		/* compute the data */
+		data = buffer[bufoffs + 0] | (buffer[bufoffs + 1] << 16);
+	}
 
 	/* word swapping */
 	if (LFBMODE_WORD_SWAP_READS(v->reg[lfbMode].u))
@@ -2906,6 +2964,7 @@ void voodoo_init(int type) {
 
 	v->output_on = false;
 	v->clock_enabled = false;
+	v->ogl_dimchange = true;
 	v->send_config = false;
 
 	memset(v->dac.reg, 0, sizeof(v->dac.reg));
@@ -3048,6 +3107,9 @@ void voodoo_init(int type) {
 }
 
 void voodoo_shutdown() {
+	if (v->ogl)
+		voodoo_ogl_shutdown(v);
+
 	if (v!=NULL) {
 		free(v->fbi.ram);
 		if (v->tmu[0].ram != NULL) {
@@ -3133,17 +3195,21 @@ void fastfill(voodoo_state *v)
 
 	poly_extra_data *extra = new poly_extra_data;
 
-	/* iterate over blocks of extents */
-	for (y = sy; y < ey; y += ARRAY_LENGTH(extents))
-	{
-		int count = MIN(ey - y, ARRAY_LENGTH(extents));
+	if (v->ogl && v->active) {
+		voodoo_ogl_fastfill();
+	} else {
 
-		extra->state = v;
-		memcpy(extra->dither, dithermatrix, sizeof(extra->dither));
+		/* iterate over blocks of extents */
+		for (y = sy; y < ey; y += ARRAY_LENGTH(extents))
+		{
+			int count = MIN(ey - y, ARRAY_LENGTH(extents));
 
-		poly_render_triangle_custom(drawbuf, y, count, extents, extra);
+			extra->state = v;
+			memcpy(extra->dither, dithermatrix, sizeof(extra->dither));
+
+			poly_render_triangle_custom(drawbuf, y, count, extents, extra);
+		}
 	}
-
 	delete extra;
 }
 
@@ -3184,7 +3250,8 @@ void triangle(voodoo_state *v)
 
 	/* perform subpixel adjustments */
 	// ????????
-	if (FBZCP_CCA_SUBPIXEL_ADJUST(v->reg[fbzColorPath].u))
+	if (!v->ogl && FBZCP_CCA_SUBPIXEL_ADJUST(v->reg[fbzColorPath].u))
+//	if (FBZCP_CCA_SUBPIXEL_ADJUST(v->reg[fbzColorPath].u))
 	{
 		INT32 dx = 8 - (v->fbi.ax & 15);
 		INT32 dy = 8 - (v->fbi.ay & 15);
@@ -3516,7 +3583,20 @@ void triangle_create_work_item(voodoo_state *v, UINT16 *drawbuf, int texcount)
 
 	info->polys++;
 
-	poly_render_triangle(drawbuf, info->callback, &vert[0], &vert[1], &vert[2], extra);
+	if (palette_changed && v->ogl && v->active) {
+		voodoo_ogl_invalidate_paltex();
+		palette_changed = false;
+	}
+
+	if (v->ogl && v->active) {
+		if (extra->info==NULL)  {
+			delete extra;
+			return;
+		}
+		voodoo_ogl_draw_triangle(extra);
+	} else {
+		poly_render_triangle(drawbuf, info->callback, &vert[0], &vert[1], &vert[2], extra);
+	}
 
 	delete extra;
 }
@@ -3678,19 +3758,45 @@ static void raster_fastfill(void *destbase, INT32 y, const poly_extent *extent, 
 
 
 void voodoo_vblank_flush(void) {
+	if (v->ogl)
+		voodoo_ogl_vblank_flush();
 	v->fbi.vblank_flush_pending=false;
 }
 
 void voodoo_set_window(void) {
+	if (v->ogl && v->active) {
+		voodoo_ogl_set_window(v);
+	}
 }
 
 void voodoo_leave(void) {
+	if (v->ogl) {
+#if 0/*FIXME*/
+		voodoo_ogl_leave(true);
+#endif
+	}
 	v->active = false;
 }
 
 void voodoo_activate(void) {
 	v->active = true;
+
+	if (v->ogl) {
+		if (voodoo_ogl_init(v)) {
+			voodoo_ogl_clear();
+		} else {
+			v->ogl = false;
+			LOG_MSG("VOODOO: acceleration disabled");
+		}
+	}
 }
 
 void voodoo_update_dimensions(void) {
+	v->ogl_dimchange = false;
+
+	if (v->ogl) {
+#if 0/*FIXME*/
+		voodoo_ogl_update_dimensions();
+#endif
+	}
 }
