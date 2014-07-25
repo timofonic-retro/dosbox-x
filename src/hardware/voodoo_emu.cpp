@@ -1713,7 +1713,8 @@ void register_w(UINT32 offset, UINT32 data) {
 					int vtotal = ((v->reg[vSync].u >> 16) & 0xfff) + (v->reg[vSync].u & 0xfff);
 					int hvis = v->reg[videoDimensions].u & 0x3ff;
 					int hvis_fake = hvis;
-					hvis*=1.5;
+					if (v->ogl)
+						hvis*=1.5;
 					int vvis = (v->reg[videoDimensions].u >> 16) & 0x3ff;
 					int hbp = (v->reg[backPorch].u & 0xff) + 2;
 					int vbp = (v->reg[backPorch].u >> 16) & 0xff;
