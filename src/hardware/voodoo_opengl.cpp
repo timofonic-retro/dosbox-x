@@ -1607,6 +1607,7 @@ void voodoo_ogl_reset_videomode(void) {
 
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
+#if 0	// screws up display size
 	//EF2000 FIX
 	glViewport( 0, 0, v->fbi.width, v->fbi.height );
 	last_width = v->fbi.width;
@@ -1619,6 +1620,7 @@ void voodoo_ogl_reset_videomode(void) {
 	glMatrixMode( GL_MODELVIEW );
 	glLoadIdentity();*/
 	// END OF FIX
+#endif
 
 #if defined (WIN32) && SDL_VERSION_ATLEAST(1, 2, 11)
 	SDL_GL_SetAttribute( SDL_GL_SWAP_CONTROL, 0 );
