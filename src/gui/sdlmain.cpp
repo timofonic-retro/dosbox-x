@@ -3252,7 +3252,7 @@ static void launchcaptures(std::string const& edit) {
 		path += file;
 		Cross::CreateDir(path);
 		stat(path.c_str(),&cstat);
-		if(cstat.st_mode & S_IFDIR == 0) {
+		if((cstat.st_mode & S_IFDIR) == 0) {
 			printf("%s doesn't exist or isn't a directory.\n",path.c_str());
 			exit(1);
 		}
@@ -3287,7 +3287,7 @@ static void launchsaves(std::string const& edit) {
 		path += file;
 		Cross::CreateDir(path);
 		stat(path.c_str(),&cstat);
-		if(cstat.st_mode & S_IFDIR == 0) {
+		if((cstat.st_mode & S_IFDIR) == 0) {
 			printf("%s doesn't exists or isn't a directory.\n",path.c_str());
 			exit(1);
 		}
