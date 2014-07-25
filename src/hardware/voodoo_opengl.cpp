@@ -30,9 +30,6 @@
 
 #if C_OPENGL
 
-#define GL_GLEXT_PROTOTYPES
-#include <GL/glext.h>
-
 #include "voodoo_def.h"
 
 SDL_Surface* ogl_surface = NULL;
