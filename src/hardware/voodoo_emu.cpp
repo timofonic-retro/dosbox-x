@@ -1582,9 +1582,13 @@ void register_w(UINT32 offset, UINT32 data) {
 			if (chips & 1) {
 				if (v->ogl && v->active && (FBZMODE_Y_ORIGIN(v->reg[fbzMode].u)!=FBZMODE_Y_ORIGIN(data))) {
 					v->reg[fbzMode].u = data;
+#if C_DYNAMIC_X86
 					CPU_Core_Dyn_X86_SaveDHFPUState();
+#endif
 					voodoo_ogl_set_window(v);
+#if C_DYNAMIC_X86
 					CPU_Core_Dyn_X86_RestoreDHFPUState();
+#endif
 				} else {
 					v->reg[fbzMode].u = data;
 				}
@@ -1945,9 +1949,13 @@ void register_w(UINT32 offset, UINT32 data) {
 			if (chips & 1) v->reg[0x000 + regnum].u = data;
 #if 0
 			if (v->ogl) {
+#if C_DYNAMIC_X86
 				CPU_Core_Dyn_X86_SaveDHFPUState();
+#endif
 				voodoo_ogl_clip_window(v);
+#if C_DYNAMIC_X86
 				CPU_Core_Dyn_X86_RestoreDHFPUState();
+#endif
 			}
 #endif
 			break;
