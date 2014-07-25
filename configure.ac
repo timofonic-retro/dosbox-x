@@ -25,6 +25,9 @@ CXXFLAGS="$CXXFLAGS -std=gnu++11 -Wall"
 dnl Scalars in the code use MMX/SSE intrinsics
 CXXFLAGS="$CXXFLAGS -mmmx -msse -msse2 -D_FILE_OFFSET_BITS=64"
 
+dnl Lots of type-punned pointers
+CXXFLAGS="$CXXFLAGS -fno-strict-aliasing"
+
 dnl Some needed libaries for OS2
 dnl perharps join this with the other target depended checks. move them upwards
 if test x$host = xi386-pc-os2-emx ; then
