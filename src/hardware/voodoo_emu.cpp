@@ -2953,10 +2953,10 @@ UINT32 voodoo_r(UINT32 offset) {
 void voodoo_init(int type) {
 	v->active = false;
 
-	v->type = VOODOO_1_DTMU;
 
 	switch (type) {
 		case VOODOO_1:
+			v->type = VOODOO_1;
 			break;
 		case VOODOO_1_DTMU:
 			v->type = VOODOO_1_DTMU;
