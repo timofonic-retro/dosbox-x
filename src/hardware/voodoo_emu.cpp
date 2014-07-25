@@ -79,6 +79,7 @@ iterated W    = 18.32 [48 bits]
 #include "cross.h"
 
 #include "voodoo_emu.h"
+#include "voodoo_opengl.h"
 
 #include "voodoo_def.h"
 
@@ -2247,9 +2248,7 @@ void lfb_w(UINT32 offset, UINT32 data, UINT32 mem_mask) {
 						voodoo_ogl_draw_pixel(x, scry+1, has_rgb, has_alpha, sr[pix], sg[pix], sb[pix], sa[pix]);
 					}
 					if (has_depth) {
-#if 0 /* HOW DO WE DO THIS NON-OPENGL? */
 						voodoo_ogl_draw_z(x, scry+1, sw[pix]);
-#endif
 					}
 				} else {
 					/* write to the RGB buffer */
@@ -3777,9 +3776,7 @@ void voodoo_set_window(void) {
 
 void voodoo_leave(void) {
 	if (v->ogl) {
-#if 0/*FIXME*/
 		voodoo_ogl_leave(true);
-#endif
 	}
 	v->active = false;
 }
@@ -3801,8 +3798,6 @@ void voodoo_update_dimensions(void) {
 	v->ogl_dimchange = false;
 
 	if (v->ogl) {
-#if 0/*FIXME*/
 		voodoo_ogl_update_dimensions();
-#endif
 	}
 }
