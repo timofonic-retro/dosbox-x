@@ -1800,10 +1800,15 @@ void CPU_SET_CRX(Bitu cr,Bitu value) {
 				} else {
 					GFX_SetTitle(-1,-1,-1,false);
 				}
-#if (C_DYNAMIC_X86)
+#if defined(C_DYNAMIC_X86) || defined(C_DYNREC)
 				if (CPU_AutoDetermineMode&CPU_AUTODETERMINE_CORE) {
+#ifdef C_DYNAMIC_X86
 					CPU_Core_Dyn_X86_Cache_Init(true);
 					cpudecoder=&CPU_Core_Dyn_X86_Run;
+#else
+					CPU_Core_Dynrec_Cache_Init(true);
+					cpudecoder=&CPU_Core_Dynrec_Run;
+#endif
 					strcpy(core_mode, "dynamic");
 				}
 #endif
@@ -2782,6 +2787,9 @@ Bit16u CPU_FindDecoderType( CPU_Decoder *decoder )
 #if C_DYNAMIC_X86
 	else if( cpudecoder == &CPU_Core_Dyn_X86_Run ) decoder_idx = 4;
 #endif
+#if C_DYNREC
+	else if( cpudecoder == &CPU_Core_Dynrec_Run ) decoder_idx = 5;
+#endif
 	else if( cpudecoder == &CPU_Core_Normal_Trap_Run ) decoder_idx = 100;
 #if C_DYNAMIC_X86
 	else if( cpudecoder == &CPU_Core_Dyn_X86_Trap_Run ) decoder_idx = 101;
@@ -2806,6 +2814,9 @@ CPU_Decoder *CPU_IndexDecoderType( Bit16u decoder_idx )
 		case 3: cpudecoder = &CPU_Core_Full_Run; break;
 #if C_DYNAMIC_X86
 		case 4: cpudecoder = &CPU_Core_Dyn_X86_Run; break;
+#endif
+#if C_DYNREC
+		case 5: cpudecoder = &CPU_Core_Dynrec_Run; break;
 #endif
 		case 100: cpudecoder = &CPU_Core_Normal_Trap_Run; break;
 #if C_DYNAMIC_X86
