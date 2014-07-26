@@ -1141,6 +1141,8 @@ static void dyn_loop(LoopTypes type) {
 		dyn_branchflag_to_reg(BR_Z);
 		branch1=gen_create_branch_on_nonzero(FC_RETOP,true);
 		break;
+	default:
+		break;
 	}
 	switch (type) {
 	case LOOP_E:
