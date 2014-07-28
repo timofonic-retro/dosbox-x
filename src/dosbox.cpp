@@ -769,7 +769,7 @@ void DOSBOX_Init(void) {
 		0 };
 
 	const char* cores[] = { "auto",
-#if (C_DYNAMIC_X86)
+#if defined(C_DYNAMIC_X86) || defined(C_DYNREC)
 		"dynamic",
 #endif
 		"normal", "full", "simple", 0 };
