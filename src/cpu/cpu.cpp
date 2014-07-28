@@ -2442,7 +2442,7 @@ static void CPU_ToggleNormalCore(bool pressed) {
     }
 }
 
-#if (C_DYNAMIC_X86)
+#if defined(C_DYNAMIC_X86) || defined(C_DYNREC)
 static void CPU_ToggleDynamicCore(bool pressed) {
     if (!pressed)
 	return;
@@ -2555,7 +2555,7 @@ public:
 		MAPPER_AddHandler(CPU_ToggleAutoCycles,MK_equals,MMOD1,"cycauto","Tog. Cycles Auto");
 		MAPPER_AddHandler(CPU_ToggleNormalCore,MK_1,MMOD1,"normal"  ,"Tog. Normal Core");
 		MAPPER_AddHandler(CPU_ToggleFullCore,MK_2,MMOD1,"full","Tog. Full Core");
-#if (C_DYNAMIC_X86)
+#if defined(C_DYNAMIC_X86) || defined(C_DYNREC)
 		MAPPER_AddHandler(CPU_ToggleDynamicCore,MK_3,MMOD1,"dynamic","Tog. Dyn. Core");
 #endif
 		MAPPER_AddHandler(CPU_ToggleSimpleCore,MK_4,MMOD1,"simple","Tog. Simple Core");
