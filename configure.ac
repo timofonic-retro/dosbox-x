@@ -422,6 +422,27 @@ else
    AC_MSG_RESULT(no)
 fi
 
+AH_TEMPLATE(C_GLIDE,[define to 1 if you have openglide])
+AC_CHECK_LIB(glide2x, main, have_glide_lib=yes, have_glide_lib=no, )
+AC_CHECK_HEADER(openglide/sdk2_glide.h, have_sdk2_glide_h=yes, have_sdk2_glide_h=no, )
+AC_ARG_ENABLE(glide,AC_HELP_STRING([--enable-glide],[Enable openglide support]),enable_glide=yes,enable_glide=no)
+AC_MSG_CHECKING(whether openglide will be used)
+if test x$enable_glide = xyes; then
+if test x$have_glide_lib = xyes -a x$have_sdk2_glide_h = xyes ; then
+case "$host" in
+   *-*-linux*)
+      LIBS="$LIBS -ldl"
+      ;;
+esac
+   AC_DEFINE(C_GLIDE,1)
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+else
+   AC_MSG_RESULT(no)
+fi
+
 AH_TEMPLATE(C_OPENGL,[Define to 1 to use opengl display output support])
 AC_CHECK_LIB(GL, main, have_gl_lib=yes, have_gl_lib=no , )
 AC_CHECK_LIB(opengl32, main, have_opengl32_lib=yes,have_opengl32_lib=no , )

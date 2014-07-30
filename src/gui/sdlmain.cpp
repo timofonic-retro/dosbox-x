@@ -80,7 +80,9 @@
 #include "cpu.h"
 #include "cross.h"
 #include "control.h"
+#if C_GLIDE
 #include "glidedef.h"
+#endif
 
 /* TODO: move to general header */
 static inline int int_log2(int val) {
@@ -505,7 +507,11 @@ void PauseDOSBox(bool pressed) {
 
 static void SDLScreen_Reset(void) {
 	char* sdl_videodrv = getenv("SDL_VIDEODRIVER");
-	if ((sdl_videodrv && !strcmp(sdl_videodrv,"windib")) || sdl.desktop.fullscreen || fullscreen_switch || sdl.desktop.want_type==SCREEN_OPENGLHQ || glide.enabled || menu_compatible) return;
+	if ((sdl_videodrv && !strcmp(sdl_videodrv,"windib")) || sdl.desktop.fullscreen || fullscreen_switch || sdl.desktop.want_type==SCREEN_OPENGLHQ ||
+#ifdef C_GLIDE
+	    glide.enabled ||
+#endif
+	    menu_compatible) return;
 	int id, major, minor;
 	DOSBox_CheckOS(id, major, minor);
 	if((id==VER_PLATFORM_WIN32_NT) && (major<6) || sdl.desktop.want_type==SCREEN_DIRECT3D) return;
@@ -607,10 +613,12 @@ void GFX_ForceRedrawScreen(void) {
 
 void GFX_ResetScreen(void) {
 	fullscreen_switch=false; 
+#if C_GLIDE
 	if(glide.enabled) {
 		GLIDE_ResetScreen(true);
 		return;
 	}
+#endif
 	GFX_Stop();
 	if (sdl.draw.callback)
 		(sdl.draw.callback)( GFX_CallBackReset );
@@ -1318,11 +1326,14 @@ void res_init(void) {
 	}
 	if(sdl.desktop.type==SCREEN_SURFACE && !sdl.desktop.fullscreen) return;
 	else {
+#if C_GLIDE
 		if (glide.enabled) {
 		    DOSBox_RefreshMenu();
 		    GLIDE_ResetScreen(1);
 		}
-		else {
+		else
+#endif
+		{
 			GFX_Stop();
 			if (sdl.draw.callback)
 				(sdl.draw.callback)( GFX_CallBackReset );
@@ -1421,9 +1432,12 @@ void change_output(int output) {
 	}
 	res_init();
 
+#if C_GLIDE
 	if (glide.enabled)
 		GLIDE_ResetScreen();
-	else {
+	else
+#endif
+	{
 		if (sdl.draw.callback)
                 	(sdl.draw.callback)( GFX_CallBackReset );
 		if(sdl.desktop.want_type==SCREEN_OPENGLHQ) {
@@ -1457,7 +1471,14 @@ void GFX_SwitchFullScreen(void) {
     menu.resizeusing=true;
 	sdl.desktop.fullscreen=!sdl.desktop.fullscreen;
 	if (sdl.desktop.fullscreen) {
-		if(sdl.desktop.want_type != SCREEN_OPENGLHQ) { if(!glide.enabled && menu.gui) SetMenu(GetHWND(),NULL); }
+		if(sdl.desktop.want_type != SCREEN_OPENGLHQ) {
+			if(
+#if C_GLIDE
+			   !glide.enabled &&
+#endif
+			   menu.gui)
+			   	SetMenu(GetHWND(),NULL);
+		}
 		if (!sdl.mouse.locked) GFX_CaptureMouse();
 #if defined (WIN32)
 		sticky_keys(false); //disable sticky keys in fullscreen mode
@@ -1468,9 +1489,11 @@ void GFX_SwitchFullScreen(void) {
 		sticky_keys(true); //restore sticky keys to default state in windowed mode.
 #endif
 	}
+#if C_GLIDE
 	if (glide.enabled)
 		GLIDE_ResetScreen();
 	else
+#endif
 		GFX_ResetScreen();
 #ifdef WIN32
 	if(menu.startup) {
@@ -2978,7 +3001,11 @@ void GFX_Events() {
 			throw(0);
 			break;
 		case SDL_VIDEOEXPOSE:
-			if ((sdl.draw.callback) && (!glide.enabled)) sdl.draw.callback( GFX_CallBackRedraw );
+			if ((sdl.draw.callback)
+#if C_GLIDE
+			    && (!glide.enabled)
+#endif
+			   ) sdl.draw.callback( GFX_CallBackRedraw );
 			break;
 #ifdef WIN32
 		case SDL_KEYDOWN:
@@ -3548,7 +3575,9 @@ int main(int argc, char* argv[]) {
 			else if (strcmp(sdl_videodrv,"windib")==0) sdl.using_windib = true;
 		}
 #endif
+#if C_GLIDE
 	glide.fullscreen = &sdl.desktop.fullscreen;
+#endif
 	sdl.num_joysticks=SDL_NumJoysticks();
 
 	/* Parse configuration files */

@@ -17,6 +17,9 @@
  */
 
 #include "dosbox.h"
+
+#if C_GLIDE
+
 #include "inout.h"
 #include "mem.h"
 #include "paging.h"
@@ -2025,3 +2028,5 @@ static void process_msg(Bitu value)
 
     }	/* switch */
 }	/* process_msg() */
+
+#endif // C_GLIDE

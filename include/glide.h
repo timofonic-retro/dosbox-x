@@ -61,7 +61,7 @@ typedef struct { float r, g, b, a; } FxColor4;
 #define FX_CALL
 #endif
 
-#include "../openglide/sdk2_glide.h"
+#include <openglide/sdk2_glide.h>
 #include "glidedef.h"
 
 // Careful with structures containing pointers

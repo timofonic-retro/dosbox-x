@@ -32,7 +32,9 @@
 # include <unistd.h>
 # include <stdio.h>
 #endif
+#if C_GLIDE
 #include "glidedef.h"
+#endif
 
 #include "voodoo.h"
 
@@ -201,9 +203,15 @@ PageHandler * MEM_GetPageHandler(Bitu phys_page) {
 	} else if ((phys_page>=memory.lfb.start_page+0x01000000/4096) &&
 		(phys_page<memory.lfb.start_page+0x01000000/4096+16)) {
 		return memory.lfb.mmiohandler;
+#if C_GLIDE
 	} else if (glide.enabled && (phys_page>=(GLIDE_LFB>>12)) && (phys_page<(GLIDE_LFB>>12)+GLIDE_PAGES)) {
 		return (PageHandler*)glide.lfb_pagehandler;
-	} else if (!glide.enabled && VOODOO_PCI_CheckLFBPage(phys_page)) {
+#endif
+	} else if (
+#if C_GLIDE
+		   !glide.enabled &&
+#endif
+		   VOODOO_PCI_CheckLFBPage(phys_page)) {
 		return VOODOO_GetPageHandler();
 	}
 	return &illegal_page_handler;

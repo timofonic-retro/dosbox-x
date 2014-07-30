@@ -198,7 +198,9 @@ void				IDE_Septernary_Init(Section*);
 void				IDE_Octernary_Init(Section*);
 void				KEYBOARD_Init(Section*);	//TODO This should setup INT 16 too but ok ;)
 void				JOYSTICK_Init(Section*);
+#if C_GLIDE
 void				GLIDE_Init(Section*);
+#endif
 void				MOUSE_Init(Section*);
 void				SBLASTER_Init(Section*);
 void				GUS_Init(Section*);
@@ -1618,6 +1620,7 @@ void DOSBOX_Init(void) {
 	Pbool = secprop->Add_bool("dongle",Property::Changeable::WhenIdle,false);
 	Pbool->Set_help("Enable dongle");
 
+#if C_GLIDE
 	secprop=control->AddSection_prop("glide",&GLIDE_Init,true);
 	Pstring = secprop->Add_string("glide",Property::Changeable::WhenIdle,"true");
 	Pstring->Set_help("Enable glide emulation: true,false,emu.");
@@ -1628,6 +1631,7 @@ void DOSBOX_Init(void) {
 		"OpenGlide does not support locking aux buffer, please use _noaux modes.");
 	Pbool = secprop->Add_bool("splash",Property::Changeable::WhenIdle,true);
 	Pbool->Set_help("Show 3dfx splash screen (requires 3dfxSpl2.dll).");
+#endif
 
 	/* All the DOS Related stuff, which will eventually start up in the shell */
 	secprop=control->AddSection_prop("dos",&DOS_Init,false);//done
