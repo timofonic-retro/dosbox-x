@@ -82,6 +82,12 @@
 /* Define to 1 to enable NE2000 ethernet passthrough, requires libpcap */
 #undef C_NE2000
 
+/* Define to 1 to use opengl display output support */
+#undef C_OPENGL
+
+/* Define to 1 to use printer support */
+#undef C_PRINTER
+
 /* Define to 1 if you have setpriority support */
 #undef C_SET_PRIORITY
 
