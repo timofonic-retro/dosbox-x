@@ -105,7 +105,9 @@ bool sse2_available = false;
 
 void CheckSSESupport()
 {
-#if defined (__GNUC__) || (_MSC_VER)
+#if (_WIN64)
+	sse2_available = true;
+#elif defined (__GNUC__) || (_MSC_VER)
 	Bitu a, b, c, d;
 	cpuid(1, a, b, c, d);
 	sse2_available = ((d >> 26) & 1)?true:false;

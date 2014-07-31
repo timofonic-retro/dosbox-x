@@ -336,10 +336,15 @@ public:
 	// Load glide2x.dll
 #if defined(WIN32)
 	CHAR szRundllPath[MAX_PATH]; 
+#if defined (_WIN64)
+	const char windllname[]="glide2x_x64.dll";
+#else
+	const char windllname[]="glide2x.dll";
+#endif
 	if (SHGetSpecialFolderPath(NULL,szRundllPath , CSIDL_SYSTEMX86, NULL) == 0) {
 		szRundllPath[0] = TEXT('\0');
 	}
-	PathAppend(szRundllPath, TEXT("glide2x.dll"));
+	PathAppend(szRundllPath, TEXT(windllname));
 		//LOG_MSG("Looking for this first: %s",szRundllPath);
 		// test
 		char cCurrentPath[FILENAME_MAX];
@@ -350,11 +355,11 @@ public:
 	if(!hdll) {
 		char cCurrentPath[FILENAME_MAX];
 		_getcwd(cCurrentPath, sizeof(cCurrentPath));
-		if (PathAppend(cCurrentPath, TEXT("glide2x.dll"))) {
+		if (PathAppend(cCurrentPath, TEXT(windllname))) {
 			//LOG_MSG("current path: %s",cCurrentPath);
 			hdll=LoadLibrary(cCurrentPath);
 			if(!hdll) {
-				if(!LoadLibrary("glide2x.dll")) {
+				if(!LoadLibrary(windllname)) {
 					LOG_MSG("Glide:Unable to load glide2x library, glide emulation disabled");
 					return;
 				}
