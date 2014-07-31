@@ -283,6 +283,160 @@ Bit16u BIOS_GetMemory(Bit16u pages,const char *who) {
 	return 0;
 }
 
+static IO_ReadHandleObject *DOSBOX_INTEGRATION_PORT_READ[4] = {NULL};
+static IO_WriteHandleObject *DOSBOX_INTEGRATION_PORT_WRITE[4] = {NULL};
+static unsigned char dosbox_int_register_shf = 0;
+static uint32_t dosbox_int_register = 0;
+static unsigned char dosbox_int_regsel_shf = 0;
+static uint32_t dosbox_int_regsel = 0;
+static bool dosbox_int_error = false;
+static bool dosbox_int_busy = false;
+static const char *dosbox_int_version = "DOSBox-X integration device";
+static const char *dosbox_int_ver_read = NULL;
+
+/* read triggered, update the regsel */
+void dosbox_integration_trigger_read() {
+	dosbox_int_error = false;
+
+	switch (dosbox_int_regsel) {
+		case 0: /* Identification */
+			dosbox_int_register = 0xD05B0740;
+			break;
+		case 1: /* test */
+			break;
+		case 2: /* version string */
+			if (dosbox_int_ver_read == NULL)
+				dosbox_int_ver_read = dosbox_int_version;
+
+			dosbox_int_register = 0;
+			for (Bitu i=0;i < 4;i++) {
+				if (*dosbox_int_ver_read == 0) {
+					dosbox_int_ver_read = dosbox_int_version;
+					break;
+				}
+
+				dosbox_int_register += ((uint32_t)((unsigned char)(*dosbox_int_ver_read++))) << (uint32_t)(i * 8);
+			}
+			break;
+		default:
+			dosbox_int_register = 0xAA55AA55;
+			dosbox_int_error = true;
+			break;
+	};
+
+	LOG_MSG("DOSBox integration read 0x%08lx got 0x%08lx (err=%u)\n",
+		(unsigned long)dosbox_int_regsel,
+		(unsigned long)dosbox_int_register,
+		dosbox_int_error?1:0);
+}
+
+/* write triggered */
+void dosbox_integration_trigger_write() {
+	dosbox_int_error = false;
+
+	LOG_MSG("DOSBox integration write 0x%08lx val 0x%08lx\n",
+		(unsigned long)dosbox_int_regsel,
+		(unsigned long)dosbox_int_register);
+
+	switch (dosbox_int_regsel) {
+		case 1: /* test */
+			break;
+		case 2: /* version string */
+			dosbox_int_ver_read = NULL;
+			break;
+		default:
+			dosbox_int_register = 0x55AA55AA;
+			dosbox_int_error = true;
+			break;
+	};
+}
+
+/* PORT 0x28: Index
+ *      0x29: Data
+ *      0x2A: Status(R) or Command(W)
+ *      0x2B: Not yet assigned
+ *
+ *      Registers are 32-bit wide. I/O to index and data rotate through the
+ *      bytes of the register depending on I/O length, meaning that one 32-bit
+ *      I/O read will read the entire register, while four 8-bit reads will
+ *      read one byte out of 4. */
+
+static Bitu dosbox_integration_port_r(Bitu port,Bitu iolen) {
+	Bitu ret = ~0;
+	Bitu retb = 0;
+
+	switch (port-0x28) {
+		case 0: /* index */
+			ret = 0;
+			while (iolen > 0) {
+				ret += (dosbox_int_regsel >> (dosbox_int_regsel_shf * 8)) << (retb * 8);
+				if ((++dosbox_int_regsel_shf) >= 4) dosbox_int_regsel_shf = 0;
+				iolen--;
+				retb++;
+			}
+			break;
+		case 1: /* data */
+			ret = 0;
+			while (iolen > 0) {
+				if (dosbox_int_register_shf == 0) dosbox_integration_trigger_read();
+				ret += (dosbox_int_register >> (dosbox_int_register_shf * 8)) << (retb * 8);
+				if ((++dosbox_int_register_shf) >= 4) dosbox_int_register_shf = 0;
+				iolen--;
+				retb++;
+			}
+			break;
+		case 2: /* status */
+			/* 7:6 = regsel byte index
+			 * 5:4 = register byte index
+			 * 3:2 = reserved
+			 *   1 = error
+			 *   0 = busy */
+			ret = (dosbox_int_regsel_shf << 6) + (dosbox_int_register_shf << 4) +
+				(dosbox_int_error ? 1 : 0) + (dosbox_int_busy ? 1 : 0);
+			break;
+		default:
+			break;
+	};
+
+	return ret;
+}
+
+void dosbox_integration_port_w(Bitu port,Bitu val,Bitu iolen) {
+	uint32_t msk;
+
+	switch (port-0x28) {
+		case 0: /* index */
+			while (iolen > 0) {
+				msk = 0xFFU << (dosbox_int_regsel_shf * 8);
+				dosbox_int_regsel = (dosbox_int_regsel & ~msk) + ((val & 0xFF) << (dosbox_int_regsel_shf * 8));
+				if ((++dosbox_int_regsel_shf) >= 4) dosbox_int_regsel_shf = 0;
+				val >>= 8U;
+				iolen--;
+			}
+			break;
+		case 1: /* data */
+			while (iolen > 0) {
+				msk = 0xFFU << (dosbox_int_register_shf * 8);
+				dosbox_int_register = (dosbox_int_register & ~msk) + ((val & 0xFF) << (dosbox_int_register_shf * 8));
+				if ((++dosbox_int_register_shf) >= 4) dosbox_int_register_shf = 0;
+				if (dosbox_int_register_shf == 0) dosbox_integration_trigger_write();
+				val >>= 8U;
+				iolen--;
+			}
+			break;
+		case 2: /* command */
+			switch (val) {
+				case 0x00: /* switch latch */
+					dosbox_int_register_shf = 0;
+					dosbox_int_regsel_shf = 0;
+					break;
+			};
+			break;
+		default:
+			break;
+	};
+}
+
 /* if mem_systems 0 then size_extended is reported as the real size else 
  * zero is reported. ems and xms can increase or decrease the other_memsystems
  * counter using the BIOS_ZeroExtendedSize call */
@@ -314,6 +468,7 @@ static unsigned char ISA_PNP_KEYMATCH=0;
 static Bits other_memsystems=0;
 static bool apm_realmode_connected = false;
 void CMOS_SetRegister(Bitu regNr, Bit8u val); //For setting equipment word
+bool enable_integration_device=false;
 bool ISAPNPBIOS=false;
 bool APMBIOS=false;
 bool APMBIOS_allow_realmode=false;
@@ -394,7 +549,7 @@ static ISAPnPDevice *ISA_PNP_selected = NULL;
 static ISAPnPDevice *ISA_PNP_devs[MAX_ISA_PNP_DEVICES] = {NULL}; /* FIXME: free objects on shutdown */
 static Bitu ISA_PNP_devnext = 0;
 
-static const unsigned char ISAPnPTestDevice_sysdev[] = {
+static const unsigned char ISAPnPIntegrationDevice_sysdev[] = {
 	ISAPNP_IO_RANGE(
 			0x01,					/* decodes 16-bit ISA addr */
 			0x28,0x28,				/* min-max range I/O port */
@@ -402,12 +557,12 @@ static const unsigned char ISAPnPTestDevice_sysdev[] = {
 	ISAPNP_END
 };
 
-class ISAPnPTestDevice : public ISAPnPDevice {
+class ISAPnPIntegrationDevice : public ISAPnPDevice {
 	public:
-		ISAPnPTestDevice() : ISAPnPDevice() {
+		ISAPnPIntegrationDevice() : ISAPnPDevice() {
 			resource_ident = 0;
-			resource_data = (unsigned char*)ISAPnPTestDevice_sysdev;
-			resource_data_len = sizeof(ISAPnPTestDevice_sysdev);
+			resource_data = (unsigned char*)ISAPnPIntegrationDevice_sysdev;
+			resource_data_len = sizeof(ISAPnPIntegrationDevice_sysdev);
 			host_writed(ident+0,ISAPNP_ID('D','O','S',0x1,0x2,0x3,0x4)); /* DOS1234 test device */
 			host_writed(ident+4,0xFFFFFFFFUL);
 			checksum_ident();
@@ -624,6 +779,7 @@ static Bitu INT15_Handler(void);
 
 void ISAPNP_Cfg_Init(Section *s) {
 	Section_prop * section=static_cast<Section_prop *>(s);
+	enable_integration_device = section->Get_bool("integration device");
 	ISAPNPBIOS = section->Get_bool("isapnpbios");
 	APMBIOS = section->Get_bool("apmbios");
 	APMBIOS_allow_realmode = section->Get_bool("apmbios allow realmode");
@@ -2997,12 +3153,18 @@ public:
 			ISAPNP_PNP_READ_PORT = new IO_ReadHandleObject;
 			ISAPNP_PNP_READ_PORT->Install(ISA_PNP_WPORT,isapnp_read_port,IO_MB);
 			LOG_MSG("Registered ISA PnP read port at 0x%03x\n",ISA_PNP_WPORT);
+		}
 
-			/* debug: test PnP device. FIXME: Make this an optional device for debugging and testing!
-			 * The intent of this test device is to give PnP emulation something to pickup. The only
-			 * other way to test PnP enumeration is to enable Sound Blaster emulation and set
-			 * sbtype=sb16vibra. */
-			ISA_PNP_devreg(new ISAPnPTestDevice);
+		if (enable_integration_device) {
+			for (Bitu i=0;i < 4;i++) {
+				DOSBOX_INTEGRATION_PORT_READ[i] = new IO_ReadHandleObject;
+				DOSBOX_INTEGRATION_PORT_WRITE[i] = new IO_WriteHandleObject;
+				DOSBOX_INTEGRATION_PORT_READ[i]->Install(0x28+i,dosbox_integration_port_r,IO_MA);
+				DOSBOX_INTEGRATION_PORT_WRITE[i]->Install(0x28+i,dosbox_integration_port_w,IO_MA);
+			}
+
+			/* DOSBox integration device */
+			ISA_PNP_devreg(new ISAPnPIntegrationDevice);
 		}
 
 		// ISA Plug & Play BIOS entrypoint
