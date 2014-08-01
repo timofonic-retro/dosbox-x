@@ -88,6 +88,9 @@
 /* Define to 1 to use printer support */
 #undef C_PRINTER
 
+/* Define to 1 to enable SDL_sound support */
+#undef C_SDL_SOUND
+
 /* Define to 1 if you have setpriority support */
 #undef C_SET_PRIORITY
 
