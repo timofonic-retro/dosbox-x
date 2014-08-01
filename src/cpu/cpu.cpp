@@ -2794,6 +2794,10 @@ Bit16u CPU_FindDecoderType( CPU_Decoder *decoder )
 #if C_DYNAMIC_X86
 	else if( cpudecoder == &CPU_Core_Dyn_X86_Trap_Run ) decoder_idx = 101;
 #endif
+#if (C_DYNREC)
+	else if( cpudecoder == &CPU_Core_Dynrec_Trap_Run ) decoder_idx = 102;
+#endif
+
 	else if( cpudecoder == &HLT_Decode ) decoder_idx = 200;
 
 
@@ -2821,6 +2825,9 @@ CPU_Decoder *CPU_IndexDecoderType( Bit16u decoder_idx )
 		case 100: cpudecoder = &CPU_Core_Normal_Trap_Run; break;
 #if C_DYNAMIC_X86
 		case 101: cpudecoder = &CPU_Core_Dyn_X86_Trap_Run; break;
+#endif
+#if (C_DYNREC)
+		case 102: cpudecoder = &CPU_Core_Dynrec_Trap_Run; break;
 #endif
 
 		case 200: cpudecoder = &HLT_Decode; break;
