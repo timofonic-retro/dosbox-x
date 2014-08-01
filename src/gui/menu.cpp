@@ -748,8 +748,12 @@ void DOSBox_SetMenu(void) {
 	SetMenu(GetHWND(), LoadMenu(GetModuleHandle(NULL),MAKEINTRESOURCE(IDR_MENU)));
 	DrawMenuBar (GetHWND());
 
-	if(menu.startup) {
-		RENDER_CallBack( GFX_CallBackReset );
+	if (glide.enabled)
+		GLIDE_ResetScreen();
+	else {
+		if(menu.startup) {
+			RENDER_CallBack( GFX_CallBackReset );
+		}
 	}
 }
 
@@ -758,7 +762,10 @@ void DOSBox_NoMenu(void) {
 	menu.toggle=false;
 	SetMenu(GetHWND(), NULL);
 	DrawMenuBar(GetHWND());
-	RENDER_CallBack( GFX_CallBackReset );
+	if (glide.enabled)
+		GLIDE_ResetScreen();
+	else
+		RENDER_CallBack( GFX_CallBackReset );
 }
 
 void DOSBox_CheckOS(int &id, int &major, int &minor) {
@@ -787,7 +794,7 @@ void DOSBox_RefreshMenu(void) {
     SDL_Prepare();
     if(!menu.gui) return;
 
-    if(fullscreen) {
+    if(fullscreen && !glide.enabled) {
     	SetMenu(GetHWND(), NULL);
     	DrawMenuBar(GetHWND());
         return;
@@ -807,7 +814,7 @@ void DOSBox_RefreshMenu2(void) {
     SDL_Prepare();
     if(!menu.gui) return;
 
-    if(fullscreen) {
+    if(fullscreen && !glide.enabled) {
     	SetMenu(GetHWND(), NULL);
     	DrawMenuBar(GetHWND());
         return;
