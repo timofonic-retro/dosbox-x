@@ -543,7 +543,7 @@ case "$host" in
        AC_MSG_CHECKING(whether direct3d display output will be enabled)
        if test x$have_d3d9_h = xyes ; then
         AC_MSG_RESULT(yes)
-        AC_ARG_ENABLE(shaders,AC_HELP_STRING([--disable-shaders],[Disable d3d pixelshader support (which requires libd3dx9)]),,[
+        AC_ARG_ENABLE(shaders,AC_HELP_STRING([--enable-shaders],[Enable d3d pixelshader support (which requires libd3dx9)]),[
 		AC_MSG_CHECKING(whether direct3d pixelshaders will be enabled)
 		ac_save_LIBS=$LIBS
 		if test x$dx_libs != x ; then
@@ -561,7 +561,7 @@ case "$host" in
 		 AC_MSG_RESULT(no)
 		 AC_MSG_WARN([Can't find libd3dx9, pixelshader support disabled])
 		fi
-	],)
+	],,)
        else
         CPPFLAGS=$ac_save_CPPFLAGS
         AC_MSG_RESULT(no)
