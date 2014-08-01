@@ -59,7 +59,9 @@
 #define CROSS_FILE	1
 #define CROSS_DIR	2
 #if defined (WIN32)
+#ifndef ftruncate
 #define ftruncate(blah,blah2) chsize(blah,blah2)
+#endif
 #endif
 
 //Solaris maybe others
