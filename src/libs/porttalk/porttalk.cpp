@@ -75,7 +75,7 @@ Bit8u inportb(Bit32u portid) {
 #ifdef WIN32
 
 // WIN specific
-#include "sdl.h"
+#include "SDL.h"
 #include <windows.h>
 #include <winioctl.h> // NEEDED by GCC
 #include "porttalk.h"
