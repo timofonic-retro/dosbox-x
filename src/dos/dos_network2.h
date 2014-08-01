@@ -110,7 +110,11 @@ extern Bit16u	NetworkHandleList[127];	/*in dos_files.cpp*/
  bool	Network_CloseFile(Bit16u entry)
 {
 		Bit32u handle=RealHandle(entry);
+#ifdef __MINGW32__
+		int _Expr_val=!!((handle >= 0 && _get_osfhandle(handle) != -1));
+#else
 		int _Expr_val=!!((handle >= 0 && (unsigned)handle < (unsigned)_nhandle));
+#endif
 		//_ASSERT_EXPR( ( _Expr_val ), _CRT_WIDE(#(handle >= 0 && (unsigned)handle < (unsigned)_nhandle)) );
 		if (!(handle > 0) || ( !( _Expr_val ))) {
 			_doserrno = 0L;
