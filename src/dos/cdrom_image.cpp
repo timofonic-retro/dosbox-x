@@ -107,8 +107,21 @@ bool CDROM_Interface_Image::AudioFile::read(Bit8u *buffer, int seek, int count)
 
 int CDROM_Interface_Image::AudioFile::getLength()
 {
-	int length = Sound_GetDuration(sample);
-	return (int)floor((length * 176.4) + 0.5);
+	int time = 1;
+	int shift = 0;
+	if (!(sample->flags & SOUND_SAMPLEFLAG_CANSEEK)) return -1;
+	
+	while (true) {
+		int success = Sound_Seek(sample, (unsigned int)(shift + time));
+		if (!success) {
+			if (time == 1) return lround((double)shift * 176.4f);
+			shift += time >> 1;
+			time = 1;
+		} else {
+			if (time > ((numeric_limits<int>::max() - shift) / 2)) return -1;
+			time = time << 1;
+		}
+	}
 }
 #endif
 
