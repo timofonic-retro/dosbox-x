@@ -1084,6 +1084,7 @@ dosurface:
 		    }
 		}
 
+#if C_D3DSHADERS
 		Section_prop *section=static_cast<Section_prop *>(control->GetSection("sdl"));
 		if(section) {
 		    Prop_multival* prop = section->Get_multival("pixelshader");
@@ -1092,6 +1093,7 @@ dosurface:
 		} else {
 		    LOG_MSG("SDL:D3D:Could not get pixelshader info, shader disabled");
 		}
+#endif
 
 		d3d->aspect=RENDER_GetAspect();
 		d3d->autofit=RENDER_GetAutofit();
@@ -1206,9 +1208,6 @@ void sticky_keys(bool restore){
 
 #ifdef __WIN32__
 static void d3d_init(void) {
-#if 1
-	E_Exit("D3D not supported");
-#else
 	void change_output(int output);
 	change_output(2);
 	sdl.desktop.want_type=SCREEN_DIRECT3D;
@@ -1243,7 +1242,6 @@ static void d3d_init(void) {
 			sdl.desktop.want_type=SCREEN_SURFACE;
 		}
 	}
-#endif
 }
 #endif
 
@@ -1937,7 +1935,7 @@ void EndSplashScreen() {
 # include "SDL_syswm.h"
 #endif
 
-#if (HAVE_D3D9_H) && defined(WIN32)
+#if (C_D3DSHADERS) && defined(WIN32)
 static void D3D_reconfigure(Section * sec) {
 	if (d3d) {
 		Section_prop *section=static_cast<Section_prop *>(sec);
@@ -2759,6 +2757,7 @@ search:
 		path = szFile;
 		_splitpath (path, drive, dir, fname, ext);
 
+#if C_D3DSHADERS
 		if(!strcmp(ext,".fx")) {
 			if(!strcmp(fname,"none")) { SetVal("sdl","pixelshader","none"); goto godefault; }
 			if (sdl.desktop.want_type != SCREEN_DIRECT3D) MessageBox(GetHWND(),
@@ -2769,7 +2768,9 @@ search:
 				fname, MB_YESNO) == IDYES) strcat(fname, ".fx forced");
 			else strcat(fname, ".fx");
 			SetVal("sdl","pixelshader",fname);
-		} else {
+		} else
+#endif
+		{
 			LOG_MSG("GUI: Unsupported filename extension.");
 			goto godefault;
 		}
@@ -3051,7 +3052,7 @@ static BOOL WINAPI ConsoleEventHandler(DWORD event) {
 void Config_Add_SDL() {
 	Section_prop * sdl_sec=control->AddSection_prop("sdl",&GUI_StartUp);
 	sdl_sec->AddInitFunction(&MAPPER_StartUp);
-#if (HAVE_D3D9_H) && defined(WIN32)
+#if (C_D3DSHADERS) && defined(WIN32)
 	// Allows dynamic pixelshader change
 	sdl_sec->AddInitFunction(&D3D_reconfigure,true);
 #endif
