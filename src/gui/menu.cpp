@@ -748,9 +748,12 @@ void DOSBox_SetMenu(void) {
 	SetMenu(GetHWND(), LoadMenu(GetModuleHandle(NULL),MAKEINTRESOURCE(IDR_MENU)));
 	DrawMenuBar (GetHWND());
 
+#if C_GLIDE
 	if (glide.enabled)
 		GLIDE_ResetScreen();
-	else {
+	else
+#endif
+	{
 		if(menu.startup) {
 			RENDER_CallBack( GFX_CallBackReset );
 		}
@@ -762,9 +765,11 @@ void DOSBox_NoMenu(void) {
 	menu.toggle=false;
 	SetMenu(GetHWND(), NULL);
 	DrawMenuBar(GetHWND());
+#if C_GLIDE
 	if (glide.enabled)
 		GLIDE_ResetScreen();
 	else
+#endif
 		RENDER_CallBack( GFX_CallBackReset );
 }
 
@@ -794,7 +799,11 @@ void DOSBox_RefreshMenu(void) {
     SDL_Prepare();
     if(!menu.gui) return;
 
-    if(fullscreen && !glide.enabled) {
+    if(fullscreen
+#if C_GLIDE
+       && !glide.enabled
+#endif
+      ) {
     	SetMenu(GetHWND(), NULL);
     	DrawMenuBar(GetHWND());
         return;
@@ -814,7 +823,11 @@ void DOSBox_RefreshMenu2(void) {
     SDL_Prepare();
     if(!menu.gui) return;
 
-    if(fullscreen && !glide.enabled) {
+    if(fullscreen
+#if C_GLIDE
+       && !glide.enabled
+#endif
+      ) {
     	SetMenu(GetHWND(), NULL);
     	DrawMenuBar(GetHWND());
         return;
@@ -896,8 +909,10 @@ int Reflect_Menu(void) {
 
 	CheckMenuItem(m_handle, ID_WAITONERR, GetSetSDLValue(1, "wait_on_error", 0) ? MF_CHECKED : MF_STRING);
 	EnableMenuItem(m_handle, ID_OPENFILE, (strlen(name) || menu.boot) ? MF_GRAYED : MF_ENABLED);
+#if C_GLIDE
 	EnableMenuItem(m_handle, ID_GLIDE_TRUE, (strlen(name) || menu.boot) ? MF_GRAYED : MF_ENABLED);
 	EnableMenuItem(m_handle, ID_GLIDE_EMU, (strlen(name) || menu.boot) ? MF_GRAYED : MF_ENABLED);
+#endif
 	EnableMenuItem(m_handle, ID_KEY_NONE, (strlen(name)) ? MF_GRAYED : MF_ENABLED);
 	EnableMenuItem(m_handle, ID_KEY_BG, (strlen(name)) ? MF_GRAYED : MF_ENABLED);
 	EnableMenuItem(m_handle, ID_KEY_CZ, (strlen(name)) ? MF_GRAYED : MF_ENABLED);
@@ -1263,6 +1278,7 @@ int Reflect_Menu(void) {
 		CheckMenuItem(m_handle, ID_SB_OPL_11025, oplrate == 11025 ? MF_CHECKED : MF_STRING);
 		CheckMenuItem(m_handle, ID_SB_OPL_8000, oplrate == 8000 ? MF_CHECKED : MF_STRING);
 	}
+#if C_GLIDE
 	sec = static_cast<Section_prop *>(control->GetSection("glide"));
 	if (sec) {
 		const std::string glide = sec->Get_string("glide");
@@ -1278,6 +1294,7 @@ int Reflect_Menu(void) {
 		CheckMenuItem(m_handle, ID_GLIDE_LFB_NONE, (lfb == "none") ? MF_CHECKED : MF_STRING);
 		CheckMenuItem(m_handle, ID_GLIDE_SPLASH, sec->Get_bool("splash") ? MF_CHECKED : MF_STRING);
 	}
+#endif
 	sec = static_cast<Section_prop *>(control->GetSection("pci"));
 	if(sec) {
 		const std::string emu = sec->Get_string("voodoo");
@@ -2163,6 +2180,7 @@ void MSG_Loop(void) {
 			case ID_NE2000_SECTION:  UI_Shortcut(6); break;
 			case ID_AUTOEXEC:  UI_Shortcut(7); break;
 			case ID_MOUSE_VERTICAL: extern bool Mouse_Vertical; Mouse_Vertical = !Mouse_Vertical; break;
+#if C_GLIDE
 			case ID_GLIDE_TRUE:
 			{	
 			Section_prop * sec = static_cast<Section_prop *>(control->GetSection("glide"));
@@ -2175,6 +2193,7 @@ void MSG_Loop(void) {
 			if(sec) SetVal("glide", "glide", sec->Get_string("glide")=="emu"?"false":"emu");
 			break;
 			}
+#endif
 			case ID_SAVELANG:  UI_Shortcut(9); break;
 			case ID_CPUTYPE_AUTO: SetVal("cpu", "cputype", "auto"); break;
 			case ID_CPUTYPE_386: SetVal("cpu", "cputype", "386"); break;
@@ -2315,6 +2334,7 @@ void MSG_Loop(void) {
 			case ID_RATE_31_DELAY_4: MENU_KeyDelayRate(4, 31); break;
 			case ID_RATE_32_DELAY_4: MENU_KeyDelayRate(4, 32); break;
 			case ID_MOUSE_SENSITIVITY: UI_Shortcut(2); break;
+#if C_GLIDE
 			case ID_GLIDE_LFB_FULL: SetVal("glide", "lfb", "full"); break;
 			case ID_GLIDE_LFB_FULL_NOAUX: SetVal("glide", "lfb", "full_noaux"); break;
 			case ID_GLIDE_LFB_READ: SetVal("glide", "lfb", "read"); break;
@@ -2328,6 +2348,7 @@ void MSG_Loop(void) {
 			if(sec) SetVal("glide", "splash", sec->Get_bool("splash") ? "false" : "true");
 			}
 			break;
+#endif
 			case ID_GLIDE_EMU_FALSE: SetVal("pci", "voodoo", "false"); break;
 			case ID_GLIDE_EMU_SOFTWARE: SetVal("pci", "voodoo", "software"); break;
 			case ID_GLIDE_EMU_OPENGL: SetVal("pci", "voodoo", "opengl"); break;
