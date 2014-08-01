@@ -1,4 +1,4 @@
-#include <TCHAR.h>
+#include <tchar.h>
 
 /*
  Not documented: D3DXFillTextureTX, D3DXFillVolumeTextureTX, D3DXCreateTextureShader
@@ -6972,7 +6972,7 @@ HRESULT WINAPI D3DXCreateEffect(LPDIRECT3DDEVICE9 device,
 
 #else
 
-#include <D3dx9shader.h>
+#include <d3dx9shader.h>
 
 #if defined (_WIN64)
 	const char windllname[]="D3DX9_43_X64.DLL";
