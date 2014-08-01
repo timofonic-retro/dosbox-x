@@ -10,6 +10,7 @@ libgui_a_SOURCES = sdlmain.cpp sdl_mapper.cpp dosbox_logo.h \
 	direct3d.cpp direct3d.h \
 	hq2x_d3d.cpp hq2x_d3d.h \
 	midi_coremidi.h sdl_gui.cpp dosbox_splash.h menu.cpp \
+	ScalingEffect.cpp ScalingEffect.h \
 	DelayReverb.cpp DelayReverb.h File.cpp File.h \
 	fmath.h FreeverbModel.cpp FreeverbModel.h BReverbModel.cpp BReverbModel.h \
 	mt32emu.h Part.cpp Part.h Partial.cpp Partial.h PartialManager.cpp \
