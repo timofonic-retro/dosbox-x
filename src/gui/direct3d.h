@@ -45,7 +45,7 @@
 // Vertex format
 #define D3DFVF_TLVERTEX D3DFVF_XYZ|D3DFVF_DIFFUSE|D3DFVF_TEX1
 
-#if C_D3DSHADERS
+#if defined(__MINGW32__) || C_D3DSHADERS
 #include "ScalingEffect.h"
 #else
 #define D3DXMATRIX D3DMATRIX
