@@ -31,14 +31,14 @@
 #include "cross.h" //fmod on certain platforms
 #include "control.h"
 bool date_host_forced=false;
-#if defined (WIN32)
+#if defined (WIN32) && !defined(__MINGW32__)
 #include "sys/timeb.h"
 #else
 #include "sys/time.h"
 #endif
 
 // sigh... Windows doesn't know gettimeofday
-#if defined (WIN32)
+#if defined (WIN32) && !defined(__MINGW32__)
 typedef Bitu suseconds_t;
 
 struct timeval {
