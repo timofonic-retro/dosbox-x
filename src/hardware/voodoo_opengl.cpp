@@ -1243,7 +1243,7 @@ void voodoo_ogl_draw_triangle(poly_extra_data *extra) {
 
 		for (int t=0;t<2;t++)
 			if (td[t].enable) {
-				glMultiTexCoord4fvARB(GL_TEXTURE0_ARB+t,&vd[i].m[t].sw);
+				vglMultiTexCoord4fvARB(GL_TEXTURE0_ARB+t,&vd[i].m[t].sw);
 				if (extra->info->shader_ulocations[10+t] >= 0)
 					vglVertexAttrib1fARB(extra->info->shader_ulocations[10+t],vd[i].m[t].lodblend);
 			}
