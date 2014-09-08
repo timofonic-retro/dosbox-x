@@ -231,7 +231,6 @@ void				EMS_Init(Section*);
 void				XMS_Init(Section*);
 void				DOS_KeyboardLayout_Init(Section*);
 void				AUTOEXEC_Init(Section*);
-void				SHELL_Init(void);
 void				INT10_Init(Section*);
 #if C_NE2000
 void				NE2K_Init(Section* sec);
@@ -1926,7 +1925,5 @@ void DOSBOX_Init(void) {
 	        "# Lines starting with a # are comment lines and are ignored by DOSBox.\n"
 	        "# They are used to (briefly) document the effect of each option.\n");
 	MSG_Add("CONFIG_SUGGESTED_VALUES", "Possible values");
-
-	control->SetStartUp(&SHELL_Init);
 }
 
