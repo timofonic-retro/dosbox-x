@@ -742,7 +742,8 @@ void DOSBOX_Init(void) {
 	const char* cputype_values[] = {"auto", "386", "486", "pentium", "386_prefetch", "pentium_mmx", 0};
 	const char* rates[] = {  "44100", "48000", "32000","22050", "16000", "11025", "8000", "49716", 0 };
 	const char* oplrates[] = {   "44100", "49716", "48000", "32000","22050", "16000", "11025", "8000", 0 };
-	const char* devices[] = { "default", "win32", "alsa", "oss", "coreaudio", "coremidi", "mt32", "synth", "timidity", "none", 0}; // FIXME: add some way to offer the actually available choices.
+	// FIXME: add some way to offer the actually available choices.
+	const char* devices[] = { "default", "win32", "alsa", "oss", "coreaudio", "coremidi", "mt32", "timidity", "fluidsynth", "none", 0};
 	const char *mt32log[] = {"off", "on",0};
 	const char *mt32thread[] = {"off", "on",0};
 	const char *mt32ReverseStereo[] = {"off", "on",0};
@@ -1301,6 +1302,71 @@ void DOSBOX_Init(void) {
 	                  "  When using a Roland MT-32 rev. 0 as midi output device, some games may require a delay in order to prevent 'buffer overflow' issues.\n"
 	                  "  In that case, add 'delaysysex', for example: midiconfig=2 delaysysex\n"
 	                  "  See the README/Manual for more details.");
+	
+	const char *fluiddrivers[] = {"pulseaudio", "alsa", "oss", "coreaudio", "dsound", "portaudio", "sndman", "jack", "file", "default",0};
+	Pstring = secprop->Add_string("fluid.driver",Property::Changeable::WhenIdle,"default");
+	Pstring->Set_values(fluiddrivers);
+	Pstring->Set_help("Driver to use with Fluidsynth, not needed under Windows. Available drivers depend on what Fluidsynth was compiled with");
+
+	Pstring = secprop->Add_string("fluid.soundfont",Property::Changeable::WhenIdle,"");
+	Pstring->Set_help("Soundfont to use with Fluidsynth. One must be specified.");
+
+	Pstring = secprop->Add_string("fluid.samplerate",Property::Changeable::WhenIdle,"48000");
+	Pstring->Set_help("Sample rate to use with Fluidsynth.");
+
+	Pstring = secprop->Add_string("fluid.gain",Property::Changeable::WhenIdle,".6");
+	Pstring->Set_help("Fluidsynth gain.");
+
+	Pint = secprop->Add_int("fluid.polyphony",Property::Changeable::WhenIdle,256);
+	Pint->Set_help("Fluidsynth polyphony.");
+
+	Pstring = secprop->Add_string("fluid.cores",Property::Changeable::WhenIdle,"default");
+	Pstring->Set_help("Fluidsynth CPU cores to use, default.");
+
+	Pstring = secprop->Add_string("fluid.periods",Property::Changeable::WhenIdle,"8");
+	Pstring->Set_help("Fluidsynth periods.");
+
+	Pstring = secprop->Add_string("fluid.periodsize",Property::Changeable::WhenIdle,"512");
+	Pstring->Set_help("Fluidsynth period size.");
+
+	const char *fluidreverb[] = {"no", "yes",0};
+	Pstring = secprop->Add_string("fluid.reverb",Property::Changeable::WhenIdle,"yes");	
+	Pstring->Set_values(fluidreverb);
+	Pstring->Set_help("Fluidsynth use reverb.");
+
+	const char *fluidchorus[] = {"no", "yes",0};
+	Pstring = secprop->Add_string("fluid.chorus",Property::Changeable::WhenIdle,"yes");	
+	Pstring->Set_values(fluidchorus);
+	Pstring->Set_help("Fluidsynth use chorus.");
+
+	Pstring = secprop->Add_string("fluid.reverb,roomsize",Property::Changeable::WhenIdle,".61");
+	Pstring->Set_help("Fluidsynth reverb room size.");
+
+	Pstring = secprop->Add_string("fluid.reverb.damping",Property::Changeable::WhenIdle,".23");
+	Pstring->Set_help("Fluidsynth reverb damping.");
+
+	Pstring = secprop->Add_string("fluid.reverb.width",Property::Changeable::WhenIdle,".76");
+	Pstring->Set_help("Fluidsynth reverb width.");
+
+	Pstring = secprop->Add_string("fluid.reverb.level",Property::Changeable::WhenIdle,".57");
+	Pstring->Set_help("Fluidsynth reverb level.");
+
+	Pint = secprop->Add_int("fluid.chorus.number",Property::Changeable::WhenIdle,3);	
+	Pint->Set_help("Fluidsynth chorus voices");
+
+	Pstring = secprop->Add_string("fluid.chorus.level",Property::Changeable::WhenIdle,"1.2");
+	Pstring->Set_help("Fluidsynth chorus level.");
+
+	Pstring = secprop->Add_string("fluid.chorus.speed",Property::Changeable::WhenIdle,".3");
+	Pstring->Set_help("Fluidsynth chorus speed.");
+
+	Pstring = secprop->Add_string("fluid.chorus.depth",Property::Changeable::WhenIdle,"8.0");
+	Pstring->Set_help("Fluidsynth chorus depth.");
+
+	const char *fluidchorustypes[] = {"0", "1",0};
+	Pint = secprop->Add_int("fluid.chorus.type",Property::Changeable::WhenIdle,0);
+	Pint->Set_values(fluidchorustypes);
+	Pint->Set_help("Fluidsynth chorus type. 0 is sine wave, 1 is triangle wave.");
 
 	Pstring = secprop->Add_string("mt32.reverse.stereo",Property::Changeable::WhenIdle,"off");
 	Pstring->Set_values(mt32ReverseStereo);

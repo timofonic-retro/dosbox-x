@@ -123,12 +123,12 @@ static struct {
 
 #include "midi_mt32.h"
 
-#if C_FLUIDSYNTH
-#include "midi_synth.h"
-#endif
-
 #if !defined(WIN32)
 # include "midi_timidity.h"
+#endif
+
+#if defined(C_FLUIDSYNTH)
+#include "midi_fluidsynth.h"
 #endif
 
 #if defined(MACOSX)
@@ -629,10 +629,6 @@ public:
 		handler=handler_list;
 		while (handler) {
 			if (!strcasecmp(dev,handler->GetName())) {
-#if C_FLUIDSYNTH
-                       if(!strcasecmp(dev,"synth"))    // synth device, get sample rate from config
-                           synthsamplerate=section->Get_int("samplerate");
-#endif
 				if (!handler->Open(conf)) {
 					LOG_MSG("MIDI:Can't open device:%s with config:%s.",dev,conf);	
 					goto getdefault;
