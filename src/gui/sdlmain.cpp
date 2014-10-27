@@ -3753,8 +3753,8 @@ int main(int argc, char* argv[]) {
 				}
 			}
 
-			if (!load_videodrv && numlock_stat)
-				SetNumLock ();
+			if (!load_videodrv)
+				CheckNumLockState ();
 		}
 #endif
 
