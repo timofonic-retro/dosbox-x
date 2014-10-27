@@ -22,11 +22,7 @@
 #include "bios_disk.h"
 #include "../src/dos/cdrom.h"
 
-#ifdef _MSC_VER
 # define MIN(a,b) ((a) < (b) ? (a) : (b))
-#else
-# define MIN(a,b) std::min(a,b)
-#endif
 
 #define MAX_IDE_CONTROLLERS 8
 
@@ -2821,7 +2817,7 @@ static void IDE_DelayedCommand(Bitu idx/*which IDE controller*/) {
 				if ((512*ata->multiple_sector_count) > sizeof(ata->sector))
 					E_Exit("SECTOR OVERFLOW");
 
-				for (unsigned int cc=0;cc < std::min(ata->multiple_sector_count,sectcount);cc++) {
+				for (unsigned int cc=0;cc < MIN(ata->multiple_sector_count,sectcount);cc++) {
 					/* it would be great if the disk object had a "read multiple sectors" member function */
 					if (disk->Read_AbsoluteSector(sectorn+cc, ata->sector+(cc*512)) != 0) {
 						LOG_MSG("ATA read failed\n");
@@ -2838,7 +2834,7 @@ static void IDE_DelayedCommand(Bitu idx/*which IDE controller*/) {
 				/* NTS: The sector advance + count decrement is done in the I/O completion function */
 				dev->state = IDE_DEV_DATA_READ;
 				dev->status = IDE_STATUS_DRQ|IDE_STATUS_DRIVE_READY|IDE_STATUS_DRIVE_SEEK_COMPLETE;
-				ata->prepare_read(0,512*std::min(ata->multiple_sector_count,sectcount));
+				ata->prepare_read(0,512*MIN(ata->multiple_sector_count,sectcount));
 				dev->controller->raise_irq();
 				break;
 
@@ -2887,7 +2883,7 @@ static void IDE_DelayedCommand(Bitu idx/*which IDE controller*/) {
 						(ata->lba[0] - 1);
 				}
 
-				for (unsigned int cc=0;cc < std::min(ata->multiple_sector_count,sectcount);cc++) {
+				for (unsigned int cc=0;cc < MIN(ata->multiple_sector_count,sectcount);cc++) {
 					/* it would be great if the disk object had a "write multiple sectors" member function */
 					if (disk->Write_AbsoluteSector(sectorn+cc, ata->sector+(cc*512)) != 0) {
 						LOG_MSG("Failed to write sector\n");
@@ -2897,7 +2893,7 @@ static void IDE_DelayedCommand(Bitu idx/*which IDE controller*/) {
 					}
 				}
 
-				for (unsigned int cc=0;cc < std::min(ata->multiple_sector_count,sectcount);cc++) {
+				for (unsigned int cc=0;cc < MIN(ata->multiple_sector_count,sectcount);cc++) {
 					if ((ata->count&0xFF) == 1) {
 						/* end of the transfer */
 						ata->count = 0;
@@ -2923,7 +2919,7 @@ static void IDE_DelayedCommand(Bitu idx/*which IDE controller*/) {
 				if (sectcount == 0) sectcount = 256;
 				dev->state = IDE_DEV_DATA_WRITE;
 				dev->status = IDE_STATUS_DRQ|IDE_STATUS_DRIVE_READY|IDE_STATUS_DRIVE_SEEK_COMPLETE;
-				ata->prepare_write(0,512*std::min(ata->multiple_sector_count,sectcount));
+				ata->prepare_write(0,512*MIN(ata->multiple_sector_count,sectcount));
 				dev->controller->raise_irq();
 				break;
 
@@ -3335,7 +3331,7 @@ void IDEATADevice::writecommand(uint8_t cmd) {
 			progress_count = 0;
 			state = IDE_DEV_DATA_WRITE;
 			status = IDE_STATUS_DRIVE_READY|IDE_STATUS_DRQ;
-			prepare_write(0UL,512UL*std::min((unsigned long)multiple_sector_count,(unsigned long)(count == 0 ? 256 : count)));
+			prepare_write(0UL,512UL*MIN((unsigned long)multiple_sector_count,(unsigned long)(count == 0 ? 256 : count)));
 			break;
 		case 0xC6: /* SET MULTIPLE MODE */
 			/* only sector counts 1, 2, 4, 8, 16, 32, 64, and 128 are legal by standard.
