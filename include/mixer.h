@@ -43,6 +43,8 @@ enum MixerModes {
 #define MIXER_BUFMASK (MIXER_BUFSIZE-1)
 extern Bit8u MixTemp[MIXER_BUFSIZE];
 
+#define MIXER_RENDERBUFSIZE 1024
+
 #define MAX_AUDIO ((1<<(16-1))-1)
 #define MIN_AUDIO -(1<<(16-1))
 
@@ -57,6 +59,8 @@ public:
 
 	template<class Type,bool stereo,bool signeddata,bool nativeorder>
 	void AddSamples(Bitu len, const Type* data);
+	template<class Type,bool stereo,bool signeddata,bool nativeorder>
+	void LoadSample(Bitu &len, const Type* &data);
 
 	void AddSamples_m8(Bitu len, const Bit8u * data);
 	void AddSamples_s8(Bitu len, const Bit8u * data);
@@ -79,17 +83,29 @@ public:
 	void AddStretchedStereo(Bitu len,Bit16s * data);		//Strech block up into needed data
 	void FillUp(void);
 	void Enable(bool _yesno);
-
-	void SaveState( std::ostream& stream );
-	void LoadState( std::istream& stream );
+	void RenderSample();
+	void RemoveRenderedSamples(Bitu count);
 
 	MIXER_Handler handler;
 	float volmain[2];
 	float scale;
 	Bit32s volmul[2];
-	Bitu freq_add,freq_index;
+
+	Bit32s render[MIXER_RENDERBUFSIZE][2];
+	Bitu render_pos,render_max;
+
+	Bitu src_rate;
+	Bitu src_rate_f;
+
+	bool allow_overrendering;	// source may render more than the 1ms frame. hack for optimistic Sound Blaster fetch
+
 	Bitu done,needed;
 	Bits last[2];
+	Bits current[2];
+	Bits delta_rem;		// 0 == use current sample, -1 load next sample, > 0 interpolate last until current
+
+	Bitu underrun_wait;
+
 	const char * name;
 	bool enabled;
 	MixerChannel * next;

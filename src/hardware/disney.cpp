@@ -305,6 +305,7 @@ static void DISNEY_PlayStereo(Bitu len, Bit8u* l, Bit8u* r) {
 
 static void DISNEY_CallBack(Bitu len) {
 	if (!len) return;
+	if (disney.leader == NULL) return;
 
 	// get the smaller used
 	Bitu real_used;
@@ -391,6 +392,8 @@ public:
 		disney.status=0x84;
 		disney.control=0;
 		disney.last_used=0;
+		disney.da[0].used =0;
+		disney.da[1].used =0;
 
 		disney.mo = new MixerObject();
 		disney.chan=disney.mo->Install(&DISNEY_CallBack,10000,"DISNEY");
