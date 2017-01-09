@@ -156,6 +156,9 @@ static bool dosbox_int_busy = false;
 static const char *dosbox_int_version = "DOSBox-X integration device v1.0";
 static const char *dosbox_int_ver_read = NULL;
 
+extern int user_cursor_x,user_cursor_y;
+extern int user_cursor_sw,user_cursor_sh;
+
 static std::string dosbox_int_debug_out;
 
 /* read triggered, update the regsel */
@@ -194,6 +197,20 @@ void dosbox_integration_trigger_read() {
 			dosbox_int_register = Keyb_ig_status();
 			break;
 
+        case 0x434D55: /* read user mouse cursor position */
+            dosbox_int_register = ((user_cursor_y & 0xFFFFUL) << 16UL) | (user_cursor_x & 0xFFFFUL);
+            break;
+
+        case 0x434D56: { /* read user mouse cursor position (normalized for Windows 3.x) */
+            signed long long x = ((signed long long)user_cursor_x << 16LL) / (signed long long)(user_cursor_sw-1);
+            signed long long y = ((signed long long)user_cursor_y << 16LL) / (signed long long)(user_cursor_sh-1);
+            if (x < 0x0000LL) x = 0x0000LL;
+            if (x > 0xFFFFLL) x = 0xFFFFLL;
+            if (y < 0x0000LL) y = 0x0000LL;
+            if (y > 0xFFFFLL) y = 0xFFFFLL;
+            dosbox_int_register = ((unsigned int)y << 16UL) | (unsigned int)x;
+            } break;
+
 		case 0xC54010: /* Screenshot/capture trigger */
 			/* TODO: This should also be hidden behind an enable switch, so that rogue DOS development
 			 *       can't retaliate if the user wants to capture video or screenshots. */
@@ -225,6 +242,10 @@ void dosbox_integration_trigger_read() {
 		(unsigned long)dosbox_int_register,
 		dosbox_int_error?1:0);
 }
+
+unsigned int mouse_notify_mode = 0;
+// 0 = off
+// 1 = trigger as PS/2 mouse interrupt
 
 /* write triggered */
 void dosbox_integration_trigger_write() {
@@ -263,6 +284,11 @@ void dosbox_integration_trigger_write() {
 			dosbox_int_debug_out.clear();
 			break;
 
+		case 0x52434D: /* release mouse capture 'MCR' */
+            void GFX_ReleaseMouse(void);
+            GFX_ReleaseMouse();
+            break;
+
 		case 0x804200: /* keyboard input injection */
 			void Mouse_ButtonPressed(Bit8u button);
 			void Mouse_ButtonReleased(Bit8u button);
@@ -299,6 +325,13 @@ void dosbox_integration_trigger_write() {
 //		case 0x804201: /* keyboard status do not write */
 //			break;
 
+        /* this command is used to enable notification of mouse movement over the windows even if the mouse isn't captured */
+        case 0x434D55: /* read user mouse cursor position */
+        case 0x434D56: /* read user mouse cursor position (normalized for Windows 3.x) */
+            mouse_notify_mode = dosbox_int_register & 0xFF;
+            LOG(LOG_MISC,LOG_DEBUG)("Mouse notify mode=%u",mouse_notify_mode);
+            break;
+ 
 		case 0xC54010: /* Screenshot/capture trigger */
 #if (C_SSHOT)
 			void CAPTURE_ScreenShotEvent(bool pressed);

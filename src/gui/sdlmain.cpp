@@ -1479,6 +1479,11 @@ void DoExtendedKeyboardHook(bool enable) {
 #endif
 }
 
+void GFX_ReleaseMouse(void) {
+	if (sdl.mouse.locked)
+        GFX_CaptureMouse();
+}
+
 void GFX_CaptureMouse(void) {
 	sdl.mouse.locked=!sdl.mouse.locked;
 	if (sdl.mouse.locked) {
@@ -2630,24 +2635,36 @@ static void HandleVideoResize(void * event) {
 #endif
 }
 
+extern unsigned int mouse_notify_mode;
+
+int user_cursor_x = 0,user_cursor_y = 0;
+int user_cursor_sw = 640,user_cursor_sh = 480;
+
 static void HandleMouseMotion(SDL_MouseMotionEvent * motion) {
+    user_cursor_x = motion->x - sdl.clip.x;
+    user_cursor_y = motion->y - sdl.clip.y;
+    user_cursor_sw = sdl.clip.w;
+    user_cursor_sh = sdl.clip.h;
+
 	if (sdl.mouse.locked || !sdl.mouse.autoenable)
 		Mouse_CursorMoved((float)motion->xrel*sdl.mouse.sensitivity/100.0f,
 						  (float)motion->yrel*sdl.mouse.sensitivity/100.0f,
 						  (float)(motion->x-sdl.clip.x)/(sdl.clip.w-1)*sdl.mouse.sensitivity/100.0f,
 						  (float)(motion->y-sdl.clip.y)/(sdl.clip.h-1)*sdl.mouse.sensitivity/100.0f,
 						  sdl.mouse.locked);
+    else if (mouse_notify_mode != 0) /* for mouse integration driver */
+		Mouse_CursorMoved(0,0,0,0,sdl.mouse.locked);
 }
 
 static void HandleMouseButton(SDL_MouseButtonEvent * button) {
 	switch (button->state) {
 	case SDL_PRESSED:
-		if (sdl.mouse.requestlock && !sdl.mouse.locked) {
+		if (sdl.mouse.requestlock && !sdl.mouse.locked && mouse_notify_mode == 0) {
 			GFX_CaptureMouse();
 			// Dont pass klick to mouse handler
 			break;
 		}
-		if (!sdl.mouse.autoenable && sdl.mouse.autolock && button->button == SDL_BUTTON_MIDDLE) {
+		if (!sdl.mouse.autoenable && sdl.mouse.autolock && mouse_notify_mode == 0 && button->button == SDL_BUTTON_MIDDLE) {
 			GFX_CaptureMouse();
 			break;
 		}
