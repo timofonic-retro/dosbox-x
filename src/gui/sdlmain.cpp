@@ -547,6 +547,7 @@ void PauseDOSBox(bool pressed) {
 }
 
 static void SDLScreen_Reset(void) {
+	LOG_MSG("CALLED SDLScreen_Reset");
 	char* sdl_videodrv = getenv("SDL_VIDEODRIVER");
 	if ((sdl_videodrv && !strcmp(sdl_videodrv,"windib")) || sdl.desktop.fullscreen || fullscreen_switch || sdl.desktop.want_type==SCREEN_OPENGLHQ || menu_compatible) return;
 	int id, major, minor;
@@ -734,6 +735,7 @@ static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp) {
 	} else {
 		fixedWidth = sdl.desktop.window.width;
 		fixedHeight = sdl.desktop.window.height;
+		LOG_MSG(" \ /-- IN GFX_SetupSurfaceScaled, window dimension %d x %d", fixedWidth, fixedHeight);
 		sdl_flags |= SDL_HWSURFACE;
 	}
 	if (fixedWidth && fixedHeight) {
@@ -763,6 +765,7 @@ static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp) {
 		sdl.clip.h=(Bit16u)(sdl.draw.height*sdl.draw.scaley);
 		sdl.surface=SDL_SetVideoMode(sdl.clip.w,sdl.clip.h,bpp,sdl_flags);
 	}
+	LOG_MSG("CALLED GFX_SetupSurfaceScaled, flags %04X",sdl_flags);
 
 	GFX_LogSDLState();
 	return sdl.surface;
@@ -806,6 +809,7 @@ Bitu GFX_SetSize(Bitu width,Bitu height,Bitu flags,double scalex,double scaley,G
 
 	Bitu bpp=0;
 	Bitu retFlags = 0;
+	Uint32 sdl_flags;
 
 	if (sdl.blit.surface) {
 		SDL_FreeSurface(sdl.blit.surface);
@@ -857,7 +861,8 @@ Bitu GFX_SetSize(Bitu width,Bitu height,Bitu flags,double scalex,double scaley,G
 		    sdl.clip.y=(Sint16)((height-sdl.clip.h)/2);
 		}
 		putenv(scale);
-		sdl.surface=SDL_SetVideoMode(width,height,bpp,(sdl.desktop.fullscreen?SDL_FULLSCREEN:0)|SDL_HWSURFACE|SDL_ANYFORMAT);
+		sdl_flags = (sdl.desktop.fullscreen?SDL_FULLSCREEN:0)|SDL_HWSURFACE|SDL_ANYFORMAT;
+		sdl.surface=SDL_SetVideoMode(width,height,bpp,sdl_flags);
 		if (sdl.surface) {
 		    switch (sdl.surface->format->BitsPerPixel) {
 			case 8:retFlags = GFX_CAN_8;break;
@@ -1033,6 +1038,8 @@ dosurface:
 #if C_OPENGL
 	case SCREEN_OPENGL:
 	{
+		LOG_MSG("RESETTING SCREEN_OPENGL");
+		GFX_ResetSDL();
 		if (sdl.opengl.pixel_buffer_object) {
 			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_EXT, 0);
 			if (sdl.opengl.buffer) glDeleteBuffersARB(1, &sdl.opengl.buffer);
@@ -1040,17 +1047,9 @@ dosurface:
 			free(sdl.opengl.framebuf);
 		}
 		SDLScreen_Reset();
-		if (!GFX_SetupSurfaceScaled((sdl.desktop.doublebuf && sdl.desktop.fullscreen) ? SDL_DOUBLEBUF : SDL_RESIZABLE,bpp)) goto dosurface;
 
 		sdl.opengl.framebuf=0;
-		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &sdl.opengl.max_texsize);
 
-		//if (!(flags&GFX_CAN_32) || (flags & GFX_RGBONLY)) goto dosurface;
-		int texsize=2 << int_log2(width > height ? width : height);
-		if (texsize>sdl.opengl.max_texsize) {
-			LOG_MSG("SDL:OPENGL:No support for texturesize of %d (max size is %d), falling back to surface",texsize,sdl.opengl.max_texsize);
-			goto dosurface;
-		}
 		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
 #if SDL_VERSION_ATLEAST(1, 2, 11)
 		Section_prop * sec=static_cast<Section_prop *>(control->GetSection("vsync"));
@@ -1058,9 +1057,19 @@ dosurface:
 			SDL_GL_SetAttribute( SDL_GL_SWAP_CONTROL, (!strcmp(sec->Get_string("vsyncmode"),"host"))?1:0 );
 		}
 #endif
-		GFX_SetupSurfaceScaled(SDL_OPENGL|SDL_RESIZABLE,0);
+		GFX_SetupSurfaceScaled(SDL_RESIZABLE,0);
 		if (!sdl.surface || sdl.surface->format->BitsPerPixel<15) {
 			LOG_MSG("SDL:OPENGL:Can't open drawing surface, are you running in 16bpp(or higher) mode?");
+			goto dosurface;
+		}
+
+		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &sdl.opengl.max_texsize);
+		LOG_MSG("INITIALIZED OPENGL - tex size %d", sdl.opengl.max_texsize);
+
+		//if (!(flags&GFX_CAN_32) || (flags & GFX_RGBONLY)) goto dosurface;
+		int texsize=2 << int_log2(width > height ? width : height);
+		if (texsize>sdl.opengl.max_texsize) {
+			LOG_MSG("SDL:OPENGL:No support for texturesize of %d (max size is %d), falling back to surface",texsize,sdl.opengl.max_texsize);
 			goto dosurface;
 		}
 		/* Create the texture and display list */
@@ -1640,19 +1649,23 @@ void res_init(void) {
 	Section_prop * section=static_cast<Section_prop *>(sec);
 	sdl.desktop.full.fixed=false;
 	const char* fullresolution=section->Get_string("fullresolution");
+	LOG_MSG(" >>>>>>> PROBING FULLSCREEN RESOLUTION");
 	sdl.desktop.full.width  = 0; sdl.desktop.full.height = 0;
 	if(fullresolution && *fullresolution) {
 		char res[100];
 		safe_strncpy( res, fullresolution, sizeof( res ));
 		fullresolution = lowcase (res);//so x and X are allowed
+		LOG_MSG(" >>>>>>> PROBING ORIGINAL FULLSCREEN RESOLUTION %s", fullresolution);
 		if (strcmp(fullresolution,"original")) {
 			sdl.desktop.full.fixed = true;
 			if (strcmp(fullresolution,"desktop")) { //desktop = 0x0
 				char* height = const_cast<char*>(strchr(fullresolution,'x'));
 				if(height && * height) {
+					LOG_MSG(" >>>>>>> PROBED FULLSCREEN RESOLUTION %s", height);
 					*height = 0;
 					sdl.desktop.full.height = atoi(height+1);
 					sdl.desktop.full.width  = atoi(res);
+					LOG_MSG(" >>>>>>> PARSED FULLSCREEN RESOLUTION TO %d x %d", sdl.desktop.full.width, sdl.desktop.full.height);
 				}
 			}
 		}
@@ -1661,14 +1674,17 @@ void res_init(void) {
 	sdl.desktop.window.width  = 0;
 	sdl.desktop.window.height = 0;
 	const char* windowresolution=section->Get_string("windowresolution");
+	LOG_MSG(" >>>>>>> PROBING WINDOW RESOLUTION");
 	if(windowresolution && *windowresolution) {
 		//if(sdl.desktop.type==SCREEN_SURFACE) return;
 		char res[100];
 		safe_strncpy( res,windowresolution, sizeof( res ));
 		windowresolution = lowcase (res);//so x and X are allowed
+		LOG_MSG(" >>>>>>> PROBING ORIGINAL WINDOW RESOLUTION %s", windowresolution);
 		if(strcmp(windowresolution,"original")) {
 			char* height = const_cast<char*>(strchr(windowresolution,'x'));
 			if(height && *height) {
+				LOG_MSG(" >>>>>>> PROBED WINDOW RESOLUTION %s", height);
 				*height = 0;
 				sdl.desktop.window.height = (Bit16u)atoi(height+1);
 				sdl.desktop.window.width  = (Bit16u)atoi(res);

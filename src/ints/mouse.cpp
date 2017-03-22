@@ -743,6 +743,9 @@ void Mouse_NewVideoMode(void) {
 	case 0x12:
 		mouse.max_y = 479;
 		break;
+	case 0x69:
+		mouse.max_y = 539;
+		break;
 	default:
 		LOG(LOG_MOUSE,LOG_ERROR)("Unhandled videomode %X on reset",mode);
 		mouse.inhibit_draw = true;
