@@ -724,7 +724,9 @@ void GFX_LogSDLState(void) {
 static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp) {
 	Bit16u fixedWidth;
 	Bit16u fixedHeight;
-
+	if (sdl.desktop.want_type == SCREEN_OPENGL) {
+		sdl_flags |= SDL_OPENGL;
+	}
 	if (sdl.desktop.fullscreen) {
 		fixedWidth = sdl.desktop.full.fixed ? sdl.desktop.full.width : 0;
 		fixedHeight = sdl.desktop.full.fixed ? sdl.desktop.full.height : 0;
@@ -1031,16 +1033,19 @@ dosurface:
 #if C_OPENGL
 	case SCREEN_OPENGL:
 	{
-		GFX_ResetSDL();
 		if (sdl.opengl.pixel_buffer_object) {
 			glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_EXT, 0);
 			if (sdl.opengl.buffer) glDeleteBuffersARB(1, &sdl.opengl.buffer);
 		} else if (sdl.opengl.framebuf) {
 			free(sdl.opengl.framebuf);
 		}
+		SDLScreen_Reset();
+		if (!GFX_SetupSurfaceScaled((sdl.desktop.doublebuf && sdl.desktop.fullscreen) ? SDL_DOUBLEBUF : SDL_RESIZABLE,bpp)) goto dosurface;
+
 		sdl.opengl.framebuf=0;
+		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &sdl.opengl.max_texsize);
+
 		//if (!(flags&GFX_CAN_32) || (flags & GFX_RGBONLY)) goto dosurface;
-		// SDLScreen_Reset();
 		int texsize=2 << int_log2(width > height ? width : height);
 		if (texsize>sdl.opengl.max_texsize) {
 			LOG_MSG("SDL:OPENGL:No support for texturesize of %d (max size is %d), falling back to surface",texsize,sdl.opengl.max_texsize);
