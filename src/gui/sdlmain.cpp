@@ -196,6 +196,7 @@ extern char**					environ;
 #endif
 
 Bitu						frames = 0;
+double                      rtdelta = 0;
 bool						emu_paused = false;
 bool						mouselocked = false; //Global variable for mapper
 bool						load_videodrv = true;
@@ -378,30 +379,44 @@ void GFX_SetTitle(Bit32s cycles,Bits frameskip,Bits timing,bool paused){
 	if (frameskip != -1) internal_frameskip = frameskip;
 
 	if (!menu_startup) {
-		sprintf(title,"%s%sDOSBox %s, CPU speed: %8d cycles, Frameskip %2d, %8s",
+		sprintf(title,"%s%sDOSBox-X %s, %d cyc/ms, %s",
 			dosbox_title.c_str(),dosbox_title.empty()?"":": ",
-			VERSION,(int)internal_cycles,(int)internal_frameskip,RunningProgram);
+			VERSION,(int)internal_cycles,RunningProgram);
+
+	    if (!menu.hidecycles) {
+            char *p = title + strlen(title); // append to end of string
+
+            sprintf(p,", FPS %2d",(int)frames);
+        }
+
+	    if (menu.showrt) {
+            char *p = title + strlen(title); // append to end of string
+
+            sprintf(p,", %2d%%/RT",(int)floor((rtdelta / 10) + 0.5));
+        }
+
 		SDL_WM_SetCaption(title,VERSION);
 		return;
 	}
+
 	if (menu.hidecycles) {
 		if (CPU_CycleAutoAdjust) {
-			sprintf(title,"%s%sDOSBox %s, CPU speed: max %3d%% cycles, Frameskip %2d, %8s",
+			sprintf(title,"%s%sDOSBox-X %s, max %3d%% cyc/ms, %s",
 				dosbox_title.c_str(),dosbox_title.empty()?"":": ",
-				VERSION,(int)CPU_CyclePercUsed,(int)internal_frameskip,RunningProgram);
+				VERSION,(int)CPU_CyclePercUsed,RunningProgram);
 		}
 		else {
-			sprintf(title,"%s%sDOSBox %s, CPU speed: %8d cycles, Frameskip %2d, %8s",
+			sprintf(title,"%s%sDOSBox-X %s, %d cyc/ms, %s",
 				dosbox_title.c_str(),dosbox_title.empty()?"":": ",
-				VERSION,(int)internal_cycles,(int)internal_frameskip,RunningProgram);
+				VERSION,(int)internal_cycles,RunningProgram);
 		}
 	} else if (CPU_CycleAutoAdjust) {
-		sprintf(title,"%s%sDOSBox %s, CPU : %s %8d%% = max %3d, %d FPS - %2d %8s %i.%i%%",
+		sprintf(title,"%s%sDOSBox-X %s, CPU : %s %d%% = max %3d, %d FPS - %2d %8s %i.%i%%",
 			dosbox_title.c_str(),dosbox_title.empty()?"":": ",
 			VERSION,core_mode,(int)CPU_CyclePercUsed,(int)internal_cycles,(int)frames,
 			(int)internal_frameskip,RunningProgram,(int)(internal_timing/100),(int)(internal_timing%100/10));
 	} else {
-		sprintf(title,"%s%sDOSBox %s, CPU : %s %8d = %8d, %d FPS - %2d %8s %i.%i%%",
+		sprintf(title,"%s%sDOSBox-X %s, CPU : %s %d = %8d, %d FPS - %2d %8s %i.%i%%",
 			dosbox_title.c_str(),dosbox_title.empty()?"":": ",
 			VERSION,core_mode,(int)0,(int)internal_cycles,(int)frames,(int)internal_frameskip,
 			RunningProgram,(int)(internal_timing/100),(int)((internal_timing%100)/10));
@@ -724,7 +739,9 @@ void GFX_LogSDLState(void) {
 static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp) {
 	Bit16u fixedWidth;
 	Bit16u fixedHeight;
-
+	if (sdl.desktop.want_type == SCREEN_OPENGL) {
+		sdl_flags |= SDL_OPENGL;
+	}
 	if (sdl.desktop.fullscreen) {
 		fixedWidth = sdl.desktop.full.fixed ? sdl.desktop.full.width : 0;
 		fixedHeight = sdl.desktop.full.fixed ? sdl.desktop.full.height : 0;
@@ -804,6 +821,7 @@ Bitu GFX_SetSize(Bitu width,Bitu height,Bitu flags,double scalex,double scaley,G
 
 	Bitu bpp=0;
 	Bitu retFlags = 0;
+	Uint32 sdl_flags;
 
 	if (sdl.blit.surface) {
 		SDL_FreeSurface(sdl.blit.surface);
@@ -855,7 +873,8 @@ Bitu GFX_SetSize(Bitu width,Bitu height,Bitu flags,double scalex,double scaley,G
 		    sdl.clip.y=(Sint16)((height-sdl.clip.h)/2);
 		}
 		putenv(scale);
-		sdl.surface=SDL_SetVideoMode(width,height,bpp,(sdl.desktop.fullscreen?SDL_FULLSCREEN:0)|SDL_HWSURFACE|SDL_ANYFORMAT);
+		sdl_flags = (sdl.desktop.fullscreen?SDL_FULLSCREEN:0)|SDL_HWSURFACE|SDL_ANYFORMAT;
+		sdl.surface=SDL_SetVideoMode(width,height,bpp,sdl_flags);
 		if (sdl.surface) {
 		    switch (sdl.surface->format->BitsPerPixel) {
 			case 8:retFlags = GFX_CAN_8;break;
@@ -1038,14 +1057,10 @@ dosurface:
 		} else if (sdl.opengl.framebuf) {
 			free(sdl.opengl.framebuf);
 		}
+		SDLScreen_Reset();
+
 		sdl.opengl.framebuf=0;
-		//if (!(flags&GFX_CAN_32) || (flags & GFX_RGBONLY)) goto dosurface;
-		// SDLScreen_Reset();
-		int texsize=2 << int_log2(width > height ? width : height);
-		if (texsize>sdl.opengl.max_texsize) {
-			LOG_MSG("SDL:OPENGL:No support for texturesize of %d, falling back to surface",texsize);
-			goto dosurface;
-		}
+
 		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
 #if SDL_VERSION_ATLEAST(1, 2, 11)
 		Section_prop * sec=static_cast<Section_prop *>(control->GetSection("vsync"));
@@ -1053,9 +1068,18 @@ dosurface:
 			SDL_GL_SetAttribute( SDL_GL_SWAP_CONTROL, (!strcmp(sec->Get_string("vsyncmode"),"host"))?1:0 );
 		}
 #endif
-		GFX_SetupSurfaceScaled(SDL_OPENGL|SDL_RESIZABLE,0);
+		GFX_SetupSurfaceScaled(SDL_RESIZABLE, 0);
 		if (!sdl.surface || sdl.surface->format->BitsPerPixel<15) {
 			LOG_MSG("SDL:OPENGL:Can't open drawing surface, are you running in 16bpp(or higher) mode?");
+			goto dosurface;
+		}
+
+		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &sdl.opengl.max_texsize);
+
+		//if (!(flags&GFX_CAN_32) || (flags & GFX_RGBONLY)) goto dosurface;
+		int texsize=2 << int_log2(width > height ? width : height);
+		if (texsize>sdl.opengl.max_texsize) {
+			LOG_MSG("SDL:OPENGL:No support for texturesize of %d (max size is %d), falling back to surface",texsize,sdl.opengl.max_texsize);
 			goto dosurface;
 		}
 		/* Create the texture and display list */
@@ -2758,7 +2782,7 @@ void OpenFileDialog( char * path_arg ) {
 	OpenFileName.lStructSize = sizeof( OPENFILENAME );
 	OpenFileName.hwndOwner = NULL;
 	if(DOSBox_Kor())
-		OpenFileName.lpstrFilter = "Ω««‡ ∆ƒ¿œ(*.com, *.exe, *.bat)\0*.com;*.exe;*.bat\0∏µÁ ∆ƒ¿œ(*.*)\0*.*\0";
+		OpenFileName.lpstrFilter = "Ïã§Ìñâ ÌååÏùº(*.com, *.exe, *.bat)\0*.com;*.exe;*.bat\0Î™®Îì† ÌååÏùº(*.*)\0*.*\0";
 	else
 		OpenFileName.lpstrFilter = "Executable files(*.com, *.exe, *.bat)\0*.com;*.exe;*.bat\0All files(*.*)\0*.*\0";
 	OpenFileName.lpstrCustomFilter = NULL;
@@ -2875,7 +2899,7 @@ void Go_Boot(const char boot_drive[_MAX_DRIVE]) {
 	OpenFileName.hwndOwner = NULL;
 
 	if(DOSBox_Kor())
-		OpenFileName.lpstrFilter = "¿ÃπÃ¡ˆ ∆ƒ¿œ(*.img, *.ima, *.pcjr, *.jrc)\0*.pcjr;*.img;*.ima;*.jrc\0∏µÁ ∆ƒ¿œ(*.*)\0*.*\0";
+		OpenFileName.lpstrFilter = "Ïù¥ÎØ∏ÏßÄ ÌååÏùº(*.img, *.ima, *.pcjr, *.jrc)\0*.pcjr;*.img;*.ima;*.jrc\0Î™®Îì† ÌååÏùº(*.*)\0*.*\0";
 	else
 		OpenFileName.lpstrFilter = "Image files(*.img, *.ima, *.pcjr, *.jrc)\0*.pcjr;*.img;*.ima;*.jrc\0All files(*.*)\0*.*\0";
 
@@ -3046,7 +3070,7 @@ void OpenFileDialog_Img( char drive ) {
 	OpenFileName.hwndOwner = NULL;
 
 	if(DOSBox_Kor())
-		OpenFileName.lpstrFilter = "¿ÃπÃ¡ˆ/ZIP ∆ƒ¿œ(*.ima, *.img, *.iso, *.cue, *.bin, *.mdf, *.zip, *.7z)\0*.ima;*.img;*.iso;*.mdf;*.zip;*.cue;*.bin;*.7z\0∏µÁ ∆ƒ¿œ(*.*)\0*.*\0";
+		OpenFileName.lpstrFilter = "Ïù¥ÎØ∏ÏßÄ/ZIP ÌååÏùº(*.ima, *.img, *.iso, *.cue, *.bin, *.mdf, *.zip, *.7z)\0*.ima;*.img;*.iso;*.mdf;*.zip;*.cue;*.bin;*.7z\0Î™®Îì† ÌååÏùº(*.*)\0*.*\0";
 	else
 		OpenFileName.lpstrFilter = "Image/Zip files(*.ima, *.img, *.iso, *.cue, *.bin, *.mdf, *.zip, *.7z)\0*.ima;*.img;*.iso;*.mdf;*.zip;*.cue;*.bin;*.7z\0All files(*.*)\0*.*\0";
 
@@ -3109,7 +3133,7 @@ void D3D_PS(void) {
 	OpenFileName.lStructSize = sizeof( OPENFILENAME );
 	OpenFileName.hwndOwner = NULL;
 	if(DOSBox_Kor())
-		OpenFileName.lpstrFilter = "»ø∞˙ ∆ƒ¿œ(*.fx)\0*.fx\0∏µÁ ∆ƒ¿œ(*.*)\0*.*\0";
+		OpenFileName.lpstrFilter = "Ìö®Í≥º ÌååÏùº(*.fx)\0*.fx\0Î™®Îì† ÌååÏùº(*.*)\0*.*\0";
 	else
 		OpenFileName.lpstrFilter = "Effect files(*.fx)\0*.fx\0All files(*.*)\0*.*\0";
 	OpenFileName.lpstrCustomFilter = NULL;
@@ -4129,6 +4153,7 @@ bool DOSBOX_parse_argv() {
 			fprintf(stderr,"  -startui -startgui                      Start DOSBox-X with UI\n");
 			fprintf(stderr,"  -startmapper                            Start DOSBox-X with mapper\n");
 			fprintf(stderr,"  -showcycles                             Show cycles count\n");
+            fprintf(stderr,"  -showrt                                 Show emulation speed relative to realtime\n");
 			fprintf(stderr,"  -fullscreen                             Start in fullscreen\n");
 			fprintf(stderr,"  -savedir <path>                         Save path\n");
 			fprintf(stderr,"  -disable-numlock-check                  Disable numlock check (win32 only)\n");
@@ -4176,6 +4201,9 @@ bool DOSBOX_parse_argv() {
 		else if (optname == "date-host-forced" || optname == "date_host_forced") {
 			control->opt_date_host_forced = true;
 		}
+        else if (optname == "showrt") {
+            control->opt_showrt = true;
+        }
 		else if (optname == "showcycles") {
 			control->opt_showcycles = true;
 		}
@@ -4361,6 +4389,25 @@ void Windows_DPI_Awareness_Init() {
 #endif
 
 bool VM_Boot_DOSBox_Kernel() {
+	if (!dos_kernel_disabled) {
+        RemoveEMSPageFrame();
+        RemoveUMBBlock();
+        DisableINT33();
+        DOS_GetMemory_unmap();
+        VFILE_Shutdown();
+        PROGRAMS_Shutdown();
+        DOS_UninstallMisc();
+        SBLASTER_DOS_Shutdown();
+        GUS_DOS_Shutdown();
+        EMS_DoShutDown();
+        XMS_DoShutDown();
+        DOS_DoShutDown();
+
+        DispatchVMEvent(VM_EVENT_DOS_SURPRISE_REBOOT); // <- apparently we rebooted without any notification (such as jmp'ing to FFFF:0000)
+
+        dos_kernel_disabled = true;
+    }
+
 	if (dos_kernel_disabled) {
 		DispatchVMEvent(VM_EVENT_DOS_BOOT); // <- just starting the DOS kernel now
 
@@ -4706,6 +4753,7 @@ int main(int argc, char* argv[]) {
 
 		// Shows menu bar (window)
 		menu.startup = true;
+        menu.showrt = control->opt_showrt;
 		menu.hidecycles = (control->opt_showcycles ? false : true);
 		if (sdl.desktop.want_type == SCREEN_OPENGLHQ) {
 			menu.gui=false; DOSBox_SetOriginalIcon();
@@ -4857,6 +4905,7 @@ int main(int argc, char* argv[]) {
 		bool reboot_machine;
 		bool dos_kernel_shutdown;
 
+fresh_boot:
 		run_machine = false;
 		reboot_machine = false;
 		dos_kernel_shutdown = false;
@@ -4869,80 +4918,92 @@ int main(int argc, char* argv[]) {
 			if (control->opt_break_start) DEBUG_EnableDebugger();
 #endif
 			DOSBOX_RunMachine();
-		} catch (int x) {
-			if (x == 2) { /* booting a guest OS. "boot" has already done the work to load the image and setup CPU registers */
-				LOG(LOG_MISC,LOG_DEBUG)("Emulation threw a signal to boot guest OS");
+        } catch (int x) {
+            if (x == 2) { /* booting a guest OS. "boot" has already done the work to load the image and setup CPU registers */
+                LOG(LOG_MISC,LOG_DEBUG)("Emulation threw a signal to boot guest OS");
 
-				run_machine = true; /* make note. don't run the whole shebang from an exception handler! */
-				dos_kernel_shutdown = true;
-			}
-			else if (x == 3) { /* reboot the system */
-				LOG(LOG_MISC,LOG_DEBUG)("Emulation threw a signal to reboot the system");
+                run_machine = true; /* make note. don't run the whole shebang from an exception handler! */
+                dos_kernel_shutdown = !dos_kernel_disabled; /* only if DOS kernel enabled */
+            }
+            else if (x == 3) { /* reboot the system */
+                LOG(LOG_MISC,LOG_DEBUG)("Emulation threw a signal to reboot the system");
 
-				reboot_machine = true;
-			}
-			else {
-				LOG(LOG_MISC,LOG_DEBUG)("Emulation threw DOSBox kill switch signal");
+                reboot_machine = true;
+                dos_kernel_shutdown = !dos_kernel_disabled; /* only if DOS kernel enabled */
+            }
+            else {
+                LOG(LOG_MISC,LOG_DEBUG)("Emulation threw DOSBox kill switch signal");
 
-				// kill switch (see instances of throw(0) and throw(1) elsewhere in DOSBox)
-				run_machine = false;
-				dos_kernel_shutdown = false;
-			}
-		}
-		catch (...) {
-			throw;
-		}
+                // kill switch (see instances of throw(0) and throw(1) elsewhere in DOSBox)
+                run_machine = false;
+                dos_kernel_shutdown = false;
+            }
+        }
+        catch (...) {
+            throw;
+        }
 
-		if (dos_kernel_shutdown) {
-			/* new code: fire event */
-			DispatchVMEvent(VM_EVENT_DOS_EXIT_BEGIN);
+        if (dos_kernel_shutdown) {
+            /* NTS: we take different paths depending on whether we're just shutting down DOS
+             *      or doing a hard reboot. */
 
-			/* older shutdown code */
-			RemoveEMSPageFrame();
+            /* new code: fire event */
+            if (reboot_machine)
+                DispatchVMEvent(VM_EVENT_DOS_EXIT_REBOOT_BEGIN);
+            else
+                DispatchVMEvent(VM_EVENT_DOS_EXIT_BEGIN);
 
-			/* remove UMB block */
-			if (!keep_umb_on_boot) RemoveUMBBlock();
+            /* older shutdown code */
+            RemoveEMSPageFrame();
 
-			/* disable INT 33h mouse services. it can interfere with guest OS paging and control of the mouse */
-			DisableINT33();
+            /* remove UMB block */
+            if (!keep_umb_on_boot) RemoveUMBBlock();
 
-			/* unmap the DOSBox kernel private segment. if the user told us not to,
-			 * but the segment exists below 640KB, then we must, because the guest OS
-			 * will trample it and assume control of that region of RAM. */
-			if (!keep_private_area_on_boot)
-				DOS_GetMemory_unmap();
-			else if (DOS_PRIVATE_SEGMENT < 0xA000)
-				DOS_GetMemory_unmap();
+            /* disable INT 33h mouse services. it can interfere with guest OS paging and control of the mouse */
+            DisableINT33();
 
-			/* revector some dos-allocated interrupts */
-			real_writed(0,0x01*4,BIOS_DEFAULT_HANDLER_LOCATION);
-			real_writed(0,0x03*4,BIOS_DEFAULT_HANDLER_LOCATION);
+            /* unmap the DOSBox kernel private segment. if the user told us not to,
+             * but the segment exists below 640KB, then we must, because the guest OS
+             * will trample it and assume control of that region of RAM. */
+            if (!keep_private_area_on_boot || reboot_machine)
+                DOS_GetMemory_unmap();
+            else if (DOS_PRIVATE_SEGMENT < 0xA000)
+                DOS_GetMemory_unmap();
 
-			/* shutdown DOSBox's virtual drive Z */
-			VFILE_Shutdown();
+            /* revector some dos-allocated interrupts */
+            if (!reboot_machine) {
+                real_writed(0,0x01*4,BIOS_DEFAULT_HANDLER_LOCATION);
+                real_writed(0,0x03*4,BIOS_DEFAULT_HANDLER_LOCATION);
+            }
 
-			/* shutdown the programs */
-			PROGRAMS_Shutdown();		/* FIXME: Is this safe? Or will this cause use-after-free bug? */
+            /* shutdown DOSBox's virtual drive Z */
+            VFILE_Shutdown();
 
-			/* remove environment variables for some components */
-			DOS_UninstallMisc();
-			SBLASTER_DOS_Shutdown();
-			GUS_DOS_Shutdown();
-			/* disable Expanded Memory. EMM is a DOS API, not a BIOS API */
-			EMS_DoShutDown();
-			/* and XMS, also a DOS API */
-			XMS_DoShutDown();
-			/* and the DOS API in general */
-			DOS_DoShutDown();
+            /* shutdown the programs */
+            PROGRAMS_Shutdown();		/* FIXME: Is this safe? Or will this cause use-after-free bug? */
 
-			/* set the "disable DOS kernel" flag so other parts of this program
-			 * do not attempt to manipulate now-defunct parts of the kernel
-			 * such as the environment block */
-			dos_kernel_disabled = true;
+            /* remove environment variables for some components */
+            DOS_UninstallMisc();
+            SBLASTER_DOS_Shutdown();
+            GUS_DOS_Shutdown();
+            /* disable Expanded Memory. EMM is a DOS API, not a BIOS API */
+            EMS_DoShutDown();
+            /* and XMS, also a DOS API */
+            XMS_DoShutDown();
+            /* and the DOS API in general */
+            DOS_DoShutDown();
 
-			/* new code: fire event */
-			DispatchVMEvent(VM_EVENT_DOS_EXIT_KERNEL);
-		}
+            /* set the "disable DOS kernel" flag so other parts of this program
+             * do not attempt to manipulate now-defunct parts of the kernel
+             * such as the environment block */
+            dos_kernel_disabled = true;
+
+            /* new code: fire event */
+            if (reboot_machine)
+                DispatchVMEvent(VM_EVENT_DOS_EXIT_REBOOT_KERNEL);
+            else
+                DispatchVMEvent(VM_EVENT_DOS_EXIT_KERNEL);
+        }
 
 		if (run_machine) {
 			/* new code: fire event */
@@ -4954,37 +5015,24 @@ int main(int argc, char* argv[]) {
 				SegValue(ss),reg_sp,
 				reg_ax,reg_bx,reg_cx,reg_dx);
 
-			try {
-				/* go! */
-				while (1/*execute until some other part of DOSBox throws exception*/)
-					DOSBOX_RunMachine();
-			}
-			catch (int x) {
-				if (x == 3) { /* reboot the machine */
-					LOG(LOG_MISC,LOG_DEBUG)("Emulation threw a signal to reboot the system");
-
-					reboot_machine = true;
-				}
-				else {
-					LOG(LOG_MISC,LOG_DEBUG)("Emulation threw DOSBox kill switch signal");
-
-					// kill switch (see instances of throw(0) and throw(1) elsewhere in DOSBox)
-				}
-			}
-			catch (...) {
-				throw;
-			}
+            /* run again */
+            goto fresh_boot;
 		}
 
 		if (reboot_machine) {
 			LOG_MSG("Rebooting the system\n");
 
-			/* new code: fire event (FIXME: DOSBox's current method of "rebooting" the emulator makes this meaningless!) */
+            void CPU_Snap_Back_Forget();
+            /* Shutdown everything. For shutdown to work properly we must force CPU to real mode */
+            CPU_Snap_Back_To_Real_Mode();
+            CPU_Snap_Back_Forget();
+
+			/* new code: fire event */
 			DispatchVMEvent(VM_EVENT_RESET);
 			DispatchVMEvent(VM_EVENT_RESET_END);
 
-			/* restart DOSBox (NOTE: Yuck) */
-			restart_program(control->startup_params);
+            /* run again */
+            goto fresh_boot;
 		}
 
 		/* and then shutdown */
@@ -4999,6 +5047,9 @@ int main(int argc, char* argv[]) {
 		 * The destructor calls all section destroy functions here. After this point, all sections have
 		 * freed resources. */
 	}
+
+    void CALLBACK_Dump(void);
+    CALLBACK_Dump();
 
 	/* GUI font registry shutdown */
 	GUI::Font::registry_freeall();

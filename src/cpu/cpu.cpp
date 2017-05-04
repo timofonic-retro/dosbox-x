@@ -1971,19 +1971,27 @@ static Bit32u snap_cpu_saved_cr3;
  * by the guest OS, but that's something we'll clean up
  * later. */
 void CPU_Snap_Back_To_Real_Mode() {
-	if (snap_cpu_snapped) return;
+    if (snap_cpu_snapped) return;
 
-	SETFLAGBIT(IF,false);	/* forcibly clear interrupt flag */
+    SETFLAGBIT(IF,false);	/* forcibly clear interrupt flag */
 
-	snap_cpu_saved_cr0 = cpu.cr0;
-	snap_cpu_saved_cr2 = paging.cr2;
-	snap_cpu_saved_cr3 = paging.cr3;
+    cpu.code.big = false;   /* force back to 16-bit */
+    cpu.stack.big = false;
+    cpu.stack.mask = 0xffff;
+    cpu.stack.notmask = 0xffff0000;
 
-	CPU_SET_CRX(0,0);	/* force CPU to real mode */
-	CPU_SET_CRX(2,0);	/* disable paging */
-	CPU_SET_CRX(3,0);	/* clear the page table dir */
+    snap_cpu_saved_cr0 = cpu.cr0;
+    snap_cpu_saved_cr2 = paging.cr2;
+    snap_cpu_saved_cr3 = paging.cr3;
 
-	snap_cpu_snapped = true;
+    CPU_SET_CRX(0,0);	/* force CPU to real mode */
+    CPU_SET_CRX(2,0);	/* disable paging */
+    CPU_SET_CRX(3,0);	/* clear the page table dir */
+
+    cpu.idt.SetBase(0);         /* or ELSE weird things will happen when INTerrupts are run */
+    cpu.idt.SetLimit(1023);
+
+    snap_cpu_snapped = true;
 }
 
 void CPU_Snap_Back_Restore() {
@@ -2513,7 +2521,7 @@ bool CPU_CPUID(void) {
 			reg_eax=0x543;		/* intel pentium mmx (P55C) */
 			reg_ebx=0;			/* Not Supported */
 			reg_ecx=0;			/* No features */
-			reg_edx=0x00800030|(enable_fpu?1:0);	/* FPU+TimeStamp/RDTSC+MMX+ModelSpecific/MSR */
+			reg_edx=0x00800010|(enable_fpu?1:0);	/* FPU+TimeStamp/RDTSC+MMX+ModelSpecific/MSR */
 			if (enable_msr) reg_edx |= 0x20; /* ModelSpecific/MSR */
             if (enable_cmpxchg8b) reg_edx |= 0x100; /* CMPXCHG8B */
 		} else {
@@ -3317,8 +3325,8 @@ void CPU_CMPXCHG8B(PhysPt eaa) {
     uint32_t hi,lo;
 
     /* NTS: We assume that, if reading doesn't cause a page fault, writing won't either */
-    hi = (uint64_t)mem_readd(eaa+(PhysPt)4);
-    lo = (uint64_t)mem_readd(eaa);
+    hi = (uint32_t)mem_readd(eaa+(PhysPt)4);
+    lo = (uint32_t)mem_readd(eaa);
 
     LOG_MSG("Experimental CMPXCHG8B implementation executed. EDX:EAX=0x%08lx%08lx ECX:EBX=0x%08lx%08lx EA=0x%08lx MEM64=0x%08lx%08lx",
         (unsigned long)reg_edx,
