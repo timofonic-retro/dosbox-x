@@ -145,8 +145,8 @@ Bitu ROMBIOS_GetMemory(Bitu bytes,const char *who,Bitu alignment,Bitu must_be_at
 	return rombios_alloc.getMemory(bytes,who,alignment,must_be_at);
 }
 
-static IO_ReadHandleObject *DOSBOX_INTEGRATION_PORT_READ[4] = {NULL};
-static IO_WriteHandleObject *DOSBOX_INTEGRATION_PORT_WRITE[4] = {NULL};
+static IO_Callout_t dosbox_int_iocallout = IO_Callout_t_none;
+
 static unsigned char dosbox_int_register_shf = 0;
 static uint32_t dosbox_int_register = 0;
 static unsigned char dosbox_int_regsel_shf = 0;
@@ -431,131 +431,154 @@ void dosbox_integration_trigger_write() {
  *      I/O read will read the entire register, while four 8-bit reads will
  *      read one byte out of 4. */
 
-static Bitu dosbox_integration_port_r(Bitu port,Bitu iolen) {
-	Bitu ret = ~0;
+static Bitu dosbox_integration_port00_index_r(Bitu port,Bitu iolen) {
 	Bitu retb = 0;
+	Bitu ret = 0;
 
-	switch (port-0x28) {
-		case 0: /* index */
-			ret = 0;
-			while (iolen > 0) {
-				ret += ((dosbox_int_regsel >> (dosbox_int_regsel_shf * 8)) & 0xFFU) << (retb * 8);
-				if ((++dosbox_int_regsel_shf) >= 4) dosbox_int_regsel_shf = 0;
-				iolen--;
-				retb++;
-			}
-			break;
-		case 1: /* data */
-			ret = 0;
-			while (iolen > 0) {
-				if (dosbox_int_register_shf == 0) dosbox_integration_trigger_read();
-				ret += ((dosbox_int_register >> (dosbox_int_register_shf * 8)) & 0xFFU) << (retb * 8);
-				if ((++dosbox_int_register_shf) >= 4) dosbox_int_register_shf = 0;
-				iolen--;
-				retb++;
-			}
-			break;
-		case 2: /* status */
-			/* 7:6 = regsel byte index
-			 * 5:4 = register byte index
-			 * 3:2 = reserved
-			 *   1 = error
-			 *   0 = busy */
-			ret = (dosbox_int_regsel_shf << 6) + (dosbox_int_register_shf << 4) +
-				(dosbox_int_error ? 2 : 0) + (dosbox_int_busy ? 1 : 0);
-			break;
-		default:
-			break;
-	};
+    while (iolen > 0) {
+        ret += ((dosbox_int_regsel >> (dosbox_int_regsel_shf * 8)) & 0xFFU) << (retb * 8);
+        if ((++dosbox_int_regsel_shf) >= 4) dosbox_int_regsel_shf = 0;
+        iolen--;
+        retb++;
+    }
 
-	return ret;
+    return ret;
 }
 
-void dosbox_integration_port_w(Bitu port,Bitu val,Bitu iolen) {
+static void dosbox_integration_port00_index_w(Bitu port,Bitu val,Bitu iolen) {
 	uint32_t msk;
 
-	switch (port-0x28) {
-		case 0: /* index */
-			while (iolen > 0) {
-				msk = 0xFFU << (dosbox_int_regsel_shf * 8);
-				dosbox_int_regsel = (dosbox_int_regsel & ~msk) + ((val & 0xFF) << (dosbox_int_regsel_shf * 8));
-				if ((++dosbox_int_regsel_shf) >= 4) dosbox_int_regsel_shf = 0;
-				val >>= 8U;
-				iolen--;
-			}
-			break;
-		case 1: /* data */
-			while (iolen > 0) {
-				msk = 0xFFU << (dosbox_int_register_shf * 8);
-				dosbox_int_register = (dosbox_int_register & ~msk) + ((val & 0xFF) << (dosbox_int_register_shf * 8));
-				if ((++dosbox_int_register_shf) >= 4) dosbox_int_register_shf = 0;
-				if (dosbox_int_register_shf == 0) dosbox_integration_trigger_write();
-				val >>= 8U;
-				iolen--;
-			}
-			break;
-		case 2: /* command */
-			switch (val) {
-				case 0x00: /* reset latch */
-					dosbox_int_register_shf = 0;
-					dosbox_int_regsel_shf = 0;
-					break;
-				case 0x01: /* flush write */
-					if (dosbox_int_register_shf != 0) {
-						dosbox_integration_trigger_write();
-						dosbox_int_register_shf = 0;
-					}
-					break;
-                case 0x20: /* push state */
-                    if (dosbox_int_push_save_state()) {
-                        dosbox_int_register_shf = 0;
-                        dosbox_int_regsel_shf = 0;
-                        dosbox_int_error = false;
-                        dosbox_int_busy = false;
-                        dosbox_int_regsel = 0xAA55BB66;
-                        dosbox_int_register = 0xD05B0C5;
-                        LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG state saved");
-                    }
-                    else {
-                        LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG unable to push state, stack overflow");
-                        dosbox_int_error = true;
-                    }
-                    break;
-                case 0x21: /* pop state */
-                    if (dosbox_int_pop_save_state()) {
-                        LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG state restored");
-                    }
-                    else {
-                        LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG unable to pop state, stack underflow");
-                        dosbox_int_error = true;
-                    }
-                    break;
-                case 0x22: /* discard state */
-                    if (dosbox_int_discard_save_state()) {
-                        LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG state discarded");
-                    }
-                    else {
-                        LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG unable to discard state, stack underflow");
-                        dosbox_int_error = true;
-                    }
-                    break;
-                case 0x23: /* discard all state */
-                    while (dosbox_int_discard_save_state());
-                    break;
-				case 0xFE: /* clear error */
-					dosbox_int_error = false;
-					break;
-				case 0xFF: /* reset interface */
-					dosbox_int_busy = false;
-					dosbox_int_error = false;
-					dosbox_int_regsel = 0xAA55BB66;
-					dosbox_int_register = 0xD05B0C5;
-					break;
-			};
-			break;
-		default:
-			break;
-	};
+    while (iolen > 0) {
+        msk = 0xFFU << (dosbox_int_regsel_shf * 8);
+        dosbox_int_regsel = (dosbox_int_regsel & ~msk) + ((val & 0xFF) << (dosbox_int_regsel_shf * 8));
+        if ((++dosbox_int_regsel_shf) >= 4) dosbox_int_regsel_shf = 0;
+        val >>= 8U;
+        iolen--;
+    }
+}
+
+static Bitu dosbox_integration_port01_data_r(Bitu port,Bitu iolen) {
+	Bitu retb = 0;
+	Bitu ret = 0;
+
+    while (iolen > 0) {
+        if (dosbox_int_register_shf == 0) dosbox_integration_trigger_read();
+        ret += ((dosbox_int_register >> (dosbox_int_register_shf * 8)) & 0xFFU) << (retb * 8);
+        if ((++dosbox_int_register_shf) >= 4) dosbox_int_register_shf = 0;
+        iolen--;
+        retb++;
+    }
+
+    return ret;
+}
+
+static void dosbox_integration_port01_data_w(Bitu port,Bitu val,Bitu iolen) {
+	uint32_t msk;
+
+    while (iolen > 0) {
+        msk = 0xFFU << (dosbox_int_register_shf * 8);
+        dosbox_int_register = (dosbox_int_register & ~msk) + ((val & 0xFF) << (dosbox_int_register_shf * 8));
+        if ((++dosbox_int_register_shf) >= 4) dosbox_int_register_shf = 0;
+        if (dosbox_int_register_shf == 0) dosbox_integration_trigger_write();
+        val >>= 8U;
+        iolen--;
+    }
+}
+
+static Bitu dosbox_integration_port02_status_r(Bitu port,Bitu iolen) {
+	/* status */
+    /* 7:6 = regsel byte index
+     * 5:4 = register byte index
+     * 3:2 = reserved
+     *   1 = error
+     *   0 = busy */
+    return (dosbox_int_regsel_shf << 6) + (dosbox_int_register_shf << 4) +
+        (dosbox_int_error ? 2 : 0) + (dosbox_int_busy ? 1 : 0);
+}
+
+static void dosbox_integration_port02_command_w(Bitu port,Bitu val,Bitu iolen) {
+    switch (val) {
+        case 0x00: /* reset latch */
+            dosbox_int_register_shf = 0;
+            dosbox_int_regsel_shf = 0;
+            break;
+        case 0x01: /* flush write */
+            if (dosbox_int_register_shf != 0) {
+                dosbox_integration_trigger_write();
+                dosbox_int_register_shf = 0;
+            }
+            break;
+        case 0x20: /* push state */
+            if (dosbox_int_push_save_state()) {
+                dosbox_int_register_shf = 0;
+                dosbox_int_regsel_shf = 0;
+                dosbox_int_error = false;
+                dosbox_int_busy = false;
+                dosbox_int_regsel = 0xAA55BB66;
+                dosbox_int_register = 0xD05B0C5;
+                LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG state saved");
+            }
+            else {
+                LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG unable to push state, stack overflow");
+                dosbox_int_error = true;
+            }
+            break;
+        case 0x21: /* pop state */
+            if (dosbox_int_pop_save_state()) {
+                LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG state restored");
+            }
+            else {
+                LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG unable to pop state, stack underflow");
+                dosbox_int_error = true;
+            }
+            break;
+        case 0x22: /* discard state */
+            if (dosbox_int_discard_save_state()) {
+                LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG state discarded");
+            }
+            else {
+                LOG(LOG_MISC,LOG_DEBUG)("DOSBOX IG unable to discard state, stack underflow");
+                dosbox_int_error = true;
+            }
+            break;
+        case 0x23: /* discard all state */
+            while (dosbox_int_discard_save_state());
+            break;
+        case 0xFE: /* clear error */
+            dosbox_int_error = false;
+            break;
+        case 0xFF: /* reset interface */
+            dosbox_int_busy = false;
+            dosbox_int_error = false;
+            dosbox_int_regsel = 0xAA55BB66;
+            dosbox_int_register = 0xD05B0C5;
+            break;
+        default:
+            dosbox_int_error = true;
+            break;
+    }
+}
+
+static const IO_ReadHandler* dosbox_integration_cb_ports_r[4] = {
+    dosbox_integration_port00_index_r,
+    dosbox_integration_port01_data_r,
+    dosbox_integration_port02_status_r,
+    NULL
+};
+
+static IO_ReadHandler* dosbox_integration_cb_port_r(IO_CalloutObject &co,Bitu port,Bitu iolen) {
+    return dosbox_integration_cb_ports_r[port&3];
+}
+
+static const IO_WriteHandler* dosbox_integration_cb_ports_w[4] = {
+    dosbox_integration_port00_index_w,
+    dosbox_integration_port01_data_w,
+    dosbox_integration_port02_command_w,
+    NULL
+};
+
+static IO_WriteHandler* dosbox_integration_cb_port_w(IO_CalloutObject &co,Bitu port,Bitu iolen) {
+    return dosbox_integration_cb_ports_w[port&3];
 }
 
 /* if mem_systems 0 then size_extended is reported as the real size else 
@@ -3639,6 +3662,11 @@ private:
 			LOG(LOG_MISC,LOG_DEBUG)("BIOS: POST stack set to 0000:%04x",reg_esp);
 		}
 
+        if (dosbox_int_iocallout != IO_Callout_t_none) {
+            IO_FreeCallout(dosbox_int_iocallout);
+            dosbox_int_iocallout = IO_Callout_t_none;
+        }
+
         if (isapnp_biosstruct_base != 0) {
             ROMBIOS_FreeMemory(isapnp_biosstruct_base);
             isapnp_biosstruct_base = 0;
@@ -3660,17 +3688,6 @@ private:
 			delete ISAPNP_PNP_READ_PORT;
 			ISAPNP_PNP_READ_PORT=NULL;
 		}
-
-        for (Bitu i=0;i < 4;i++) {
-            if (DOSBOX_INTEGRATION_PORT_READ[i] != NULL) {
-                delete DOSBOX_INTEGRATION_PORT_READ[i];
-                DOSBOX_INTEGRATION_PORT_READ[i] = NULL;
-            }
-            if (DOSBOX_INTEGRATION_PORT_WRITE[i] != NULL) {
-                delete DOSBOX_INTEGRATION_PORT_WRITE[i];
-                DOSBOX_INTEGRATION_PORT_WRITE[i] = NULL;
-            }
-        }
 
 		if (bios_first_init) {
 			/* clear the first 1KB-32KB */
@@ -3929,12 +3946,18 @@ private:
 		}
 
 		if (enable_integration_device) {
-			for (Bitu i=0;i < 4;i++) {
-				DOSBOX_INTEGRATION_PORT_READ[i] = new IO_ReadHandleObject;
-				DOSBOX_INTEGRATION_PORT_WRITE[i] = new IO_WriteHandleObject;
-				DOSBOX_INTEGRATION_PORT_READ[i]->Install(0x28+i,dosbox_integration_port_r,IO_MA);
-				DOSBOX_INTEGRATION_PORT_WRITE[i]->Install(0x28+i,dosbox_integration_port_w,IO_MA);
-			}
+            /* integration device callout */
+            if (dosbox_int_iocallout == IO_Callout_t_none)
+                dosbox_int_iocallout = IO_AllocateCallout(IO_TYPE_MB);
+            if (dosbox_int_iocallout == IO_Callout_t_none)
+                E_Exit("Failed to get dosbox integration IO callout handle");
+
+            {
+                IO_CalloutObject *obj = IO_GetCallout(dosbox_int_iocallout);
+                if (obj == NULL) E_Exit("Failed to get dosbox integration IO callout");
+                obj->Install(0x28,IOMASK_Combine(IOMASK_FULL,IOMASK_Range(4)),dosbox_integration_cb_port_r,dosbox_integration_cb_port_w);
+                IO_PutCallout(obj);
+            }
 
             /* DOSBox integration device */
             if (isapnpigdevice == NULL) {
@@ -4744,15 +4767,9 @@ public:
             isapnpigdevice=NULL;
         }
 
-        for (Bitu i=0;i < 4;i++) {
-            if (DOSBOX_INTEGRATION_PORT_READ[i] != NULL) {
-                delete DOSBOX_INTEGRATION_PORT_READ[i];
-                DOSBOX_INTEGRATION_PORT_READ[i] = NULL;
-            }
-            if (DOSBOX_INTEGRATION_PORT_WRITE[i] != NULL) {
-                delete DOSBOX_INTEGRATION_PORT_WRITE[i];
-                DOSBOX_INTEGRATION_PORT_WRITE[i] = NULL;
-            }
+        if (dosbox_int_iocallout != IO_Callout_t_none) {
+            IO_FreeCallout(dosbox_int_iocallout);
+            dosbox_int_iocallout = IO_Callout_t_none;
         }
 
 		/* abort DAC playing */
