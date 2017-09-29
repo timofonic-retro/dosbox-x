@@ -483,7 +483,7 @@ static void FPU_FUCOM(Bitu st, Bitu other){
 }
 
 static void FPU_FUCOMI(Bitu st, Bitu other){
-	
+	extern Bitu FillFlags(void);
 	FillFlags();
 	SETFLAGBIT(OF,false);
 
