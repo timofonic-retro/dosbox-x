@@ -3619,6 +3619,8 @@ Bitu call_pnp_pp = 0;
 
 Bitu isapnp_biosstruct_base = 0;
 
+Bitu BIOS_boot_code_offset = 0;
+
 void BIOS_OnResetComplete(Section *x);
 
 class BIOS:public Module_base{
@@ -4508,6 +4510,22 @@ public:
 		// signature
 		phys_writeb(0xfffff,0x55);
 	}
+    void write_FFFF_PC98_signature() {
+        /* this may overwrite the existing signature.
+         * PC-98 systems DO NOT have an ASCII date at F000:FFF5
+         * and the WORD value at F000:FFFE is said to be a checksum of the BIOS */
+ 
+		// The farjump at the processor reset entry point (jumps to POST routine)
+		phys_writeb(0xffff0,0xEA);					// FARJMP
+		phys_writew(0xffff1,RealOff(BIOS_DEFAULT_RESET_LOCATION));	// offset
+		phys_writew(0xffff3,RealSeg(BIOS_DEFAULT_RESET_LOCATION));	// segment
+
+		// write nothing (not used)
+		for(Bitu i = 0; i < 9; i++) phys_writeb(0xffff5+i,0);
+
+        // fake BIOS checksum
+        phys_writew(0xffffe,0xABCD);
+    }
 	BIOS(Section* configuration):Module_base(configuration){
 		/* tandy DAC can be requested in tandy_sound.cpp by initializing this field */
 		Bitu wo;
@@ -4715,6 +4733,7 @@ public:
 			wo += 4;
 
 			// boot
+            BIOS_boot_code_offset = wo;
 			phys_writeb(wo+0x00,(Bit8u)0xFE);						//GRP 4
 			phys_writeb(wo+0x01,(Bit8u)0x38);						//Extra Callback instruction
 			phys_writew(wo+0x02,(Bit16u)cb_bios_boot.Get_callback());			//The immediate word
@@ -4793,6 +4812,14 @@ public:
 		CPU_Snap_Back_Restore();
 	}
 };
+
+void BIOS_Enter_Boot_Phase(void) {
+    /* direct CS:IP right to the instruction that leads to the boot process */
+    /* note that since it's a callback instruction it doesn't really matter
+     * what CS:IP is as long as it points to the instruction */
+    reg_eip = BIOS_boot_code_offset & 0xFUL;
+	CPU_SetSegGeneral(cs, BIOS_boot_code_offset >> 4UL);
+}
 
 void BIOS_SetCOMPort(Bitu port, Bit16u baseaddr) {
 	switch(port) {
@@ -4898,6 +4925,10 @@ void BIOS_OnPowerOn(Section* sec) {
 	test = new BIOS(control->GetSection("joystick"));
 }
 
+void BIOS_OnEnterPC98Mode(Section* sec) {
+    if (test) test->write_FFFF_PC98_signature();
+}
+
 void swapInNextDisk(bool pressed);
 void swapInNextCD(bool pressed);
 
@@ -4949,6 +4980,9 @@ void BIOS_Init() {
 	AddExitFunction(AddExitFunctionFuncPair(BIOS_Destroy),false);
 	AddVMEventFunction(VM_EVENT_POWERON,AddVMEventFunctionFuncPair(BIOS_OnPowerOn));
 	AddVMEventFunction(VM_EVENT_RESET_END,AddVMEventFunctionFuncPair(BIOS_OnResetComplete));
+
+    /* PC-98 support */
+	AddVMEventFunction(VM_EVENT_ENTER_PC98_MODE,AddVMEventFunctionFuncPair(BIOS_OnEnterPC98Mode));
 }
 
 void write_ID_version_string() {

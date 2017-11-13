@@ -1499,10 +1499,24 @@ static void RAM_remap_64KBat1MB_A20fast(bool enable/*if set, we're transitioning
 	LOG_MSG("A20gate mode change: %u pages modified (fast enable=%d)\n",(int)c,(int)enable);
 }
 
+class REDOS : public Program {
+public:
+	void Run(void) {
+        throw int(6);
+    }
+};
+
+void REDOS_ProgramStart(Program * * make) {
+	*make=new REDOS;
+}
+
 class GOTOPC98 : public Program {
 public:
 	void Run(void) {
-			WriteOut("PC-98 mode not implemented yet\n");
+        if (enable_pc98_jump)
+            throw int(5);
+        else /* SHOULD NOT HAPPEN */
+			WriteOut("PC-98 mode not available in your configuration\n");
 	}
 };
 
