@@ -317,7 +317,7 @@ static void FPU_FBST(PhysPt addr) {
 /* std::isinf is C99 standard how could you NOT have this VS2008??? */
 # include <math.h>
 /* the purpose of this macro is to test for -/+inf. NaN is not inf. If finite or NaN it's not infinity */
-# define isinf(x) (!(_finite(x) || _isnan(x)))
+//# define isinf(x) (!(_finite(x) || _isnan(x)))
 # define isdenormal(x) (_fpclass(x) == _FPCLASS_ND || _fpclass(x) == _FPCLASS_PD)
 #else
 # include <math.h>
