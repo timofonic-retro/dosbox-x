@@ -327,3 +327,10 @@ typedef         double     Real64;
 #define PACKAGE_TARNAME "dosbox-x"
 #define PACKAGE_URL "http://dosbox-x.software"
 #define PACKAGE_VERSION "0.801"
+
+#define le16toh(x) (x)
+#define le32toh(x) (x)
+#define le64toh(x) (x)
+#define htole16(x) (x)
+#define htole32(x) (x)
+#define htole64(x) (x)
